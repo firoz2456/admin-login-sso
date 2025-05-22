@@ -1,0 +1,102 @@
+/**
+ * Admin Login SSO login page styles
+ */
+
+/* Error message styling */
+.admin-login-sso-message {
+    background-color: #fff;
+    border-left: 4px solid #dc3232;
+    box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.1);
+    margin: 5px 0 15px;
+    padding: 1px 12px;
+}
+
+.admin-login-sso-message p {
+    margin: 0.5em 0;
+    padding: 2px;
+}
+
+/* Google button container */
+.google-login-button-container {
+    margin: 24px 0;
+    text-align: center;
+}
+
+/* Google button styling - modern design */
+.google-login-button {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    height: 42px;
+    padding: 0;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    text-decoration: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+    transition: all 0.2s ease;
+    background-color: #ffffff !important;
+    color: #757575 !important;
+    border: 1px solid #dddddd;
+    width: 100%;
+    max-width: 280px;
+}
+
+.google-login-button:hover,
+.google-login-button:focus {
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+    background-color: #f8f8f8 !important;
+    text-decoration: none !important;
+}
+
+.google-login-button:active {
+    background-color: #f5f5f5 !important;
+}
+
+/* Google logo */
+.google-logo {
+    background-image: url('data:image/svg+xml;charset=utf-8;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48cGF0aCBkPSJNMTcuNiA5LjJsLS4xLTEuOEg5djMuNGg0LjhDMTMuNiAxMiAxMyAxMyAxMiAxMy42djIuMmgzYTguOCA4LjggMCAwIDAgMi42LTYuNnoiIGZpbGw9IiM0Mjg1RjQiIGZpbGwtcnVsZT0ibm9uemVybyIvPjxwYXRoIGQ9Ik05IDE4YzIuNCAwIDQuNS0uOCA2LTIuMmwtMy0yLjJhNS40IDUuNCAwIDAgMS04LTIuOUgxVjEzYTkgOSAwIDAgMCA4IDV6IiBmaWxsPSIjMzRBODUzIiBmaWxsLXJ1bGU9Im5vbnplcm8iLz48cGF0aCBkPSJNNCAxMC43YTUuNCA1LjQgMCAwIDEgMC0zLjRWNUgxYTkgOSAwIDAgMCAwIDhsMy0yLjN6IiBmaWxsPSIjRkJCQzA1IiBmaWxsLXJ1bGU9Im5vbnplcm8iLz48cGF0aCBkPSJNOSAzLjZjMS4zIDAgMi41LjQgMy40IDEuM0wxNSAyLjNBOSA5IDAgMCAwIDEgNWwzIDIuNGE1LjQgNS40IDAgMCAxIDUtMy43eiIgZmlsbD0iI0VBNDMzNSIgZmlsbC1ydWxlPSJub256ZXJvIi8+PHBhdGggZD0iTTAgMGgxOHYxOEgweiIvPjwvZz48L3N2Zz4=');
+    background-color: white;
+    background-repeat: no-repeat;
+    background-position: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 4px 0 0 4px;
+}
+
+.google-button-text {
+    flex: 1;
+    padding: 0 16px;
+    font-weight: 500;
+    letter-spacing: 0.21px;
+    text-align: center;
+}
+
+/* Classic login link */
+.classic-login-link-container {
+    text-align: center;
+    margin-top: 16px;
+    margin-bottom: 24px;
+}
+
+.classic-login-link {
+    color: #2271b1;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 5px;
+}
+
+.classic-login-link:hover,
+.classic-login-link:focus {
+    color: #135e96;
+    text-decoration: underline;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 782px) {
+    .google-login-button {
+        max-width: 100%;
+    }
+}

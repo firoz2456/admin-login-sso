@@ -1,0 +1,44 @@
+# Operating System files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editor files
+*.sublime-project
+*.sublime-workspace
+*.idea
+.vscode
+*.swp
+*.swo
+
+# Composer
+/vendor/
+/composer.lock
+
+# NPM/Node modules
+/node_modules/
+/package-lock.json
+/npm-debug.log
+
+# WordPress
+/wp-config.php
+/wp-content/uploads/
+/wp-content/upgrade/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Build files
+/build/
+/dist/
+
+# Debug logs
+/debug.log
+/logs/
+
+# Misc
+.phpunit.result.cache
+.claude
