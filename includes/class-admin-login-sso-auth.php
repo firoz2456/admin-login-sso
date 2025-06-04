@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Authentication handler class
  *
@@ -344,41 +345,33 @@ class Admin_Login_SSO_Auth {
      * @param string $email User email
      * @return bool True if domain is allowed, false otherwise
      */
-    private function validate_email_domain($email) {
+    private function validate_email_domain(string $email): bool {
         $allowed_domains = get_option('admin_login_sso_allowed_domains');
-        
-        // If no domains are specified, deny all
+
         if (empty($allowed_domains)) {
             return false;
         }
-        
-        // Get email domain
-        $email_parts = explode('@', $email);
-        if (count($email_parts) !== 2) {
-            return false;
-        }
-        
-        $email_domain = $email_parts[1];
-        
-        // Check against allowed domains
-        $domains = explode(',', $allowed_domains);
+
+        $domains = wp_parse_list($allowed_domains);
+
+        $email_domain = strtolower(substr(strrchr($email, '@'), 1));
+
         foreach ($domains as $domain) {
-            $domain = trim($domain);
-            
-            // Exact match
+            $domain = strtolower(trim($domain));
+
             if ($domain === $email_domain) {
                 return true;
             }
-            
-            // Wildcard match (*.example.com)
-            if (0 === strpos($domain, '*.')) {
-                $domain_suffix = substr($domain, 1); // Remove the *
-                if (substr($email_domain, -strlen($domain_suffix)) === $domain_suffix) {
+
+            if (str_starts_with($domain, '*.')) {
+                $domain_suffix = substr($domain, 1);
+
+                if (str_ends_with($email_domain, $domain_suffix)) {
                     return true;
                 }
             }
         }
-        
+
         return false;
     }
 
