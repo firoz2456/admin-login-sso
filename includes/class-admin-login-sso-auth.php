@@ -54,6 +54,9 @@ class Admin_Login_SSO_Auth {
         add_action('login_form', array($this, 'modify_login_form'));
         add_action('login_enqueue_scripts', array($this, 'enqueue_login_assets'));
         
+        // Display error messages above the login form
+        add_action('login_message', array($this, 'display_login_messages'));
+        
         // Handle OAuth callback
         add_action('init', array($this, 'handle_oauth_callback'));
         
@@ -63,6 +66,55 @@ class Admin_Login_SSO_Auth {
         
         // Handle logout
         add_action('wp_logout', array($this, 'handle_logout'));
+    }
+
+    /**
+     * Display login messages above the form
+     *
+     * @param string $message Existing login message
+     * @return string Modified login message
+     */
+    public function display_login_messages($message) {
+        // Only show messages if it's an admin login and the feature is enabled
+        if (!$this->is_admin_login() || !$this->is_enabled()) {
+            return $message;
+        }
+        
+        $output = '';
+        
+        // Check for emergency bypass
+        $bypass_time = get_option('admin_login_sso_emergency_bypass');
+        if ($bypass_time && $bypass_time > time()) {
+            $output .= '<div class="admin-login-sso-message info">';
+            $output .= '<p>' . __('SSO is temporarily disabled. You can use standard WordPress login.', 'admin-login-sso') . '</p>';
+            $output .= '</div>';
+        }
+
+        // Check for re-authentication message
+        $reauth_message = get_transient('admin_login_sso_reauth_required');
+        if ($reauth_message) {
+            $output .= '<div class="admin-login-sso-message info">';
+            $output .= '<p>' . esc_html($reauth_message['message']) . '</p>';
+            $output .= '</div>';
+            delete_transient('admin_login_sso_reauth_required');
+        }
+
+        // Check for errors
+        if (isset($_GET['login']) && 'failed' === $_GET['login']) {
+            $error = get_transient('admin_login_sso_error');
+            if ($error) {
+                $output .= '<div class="admin-login-sso-message error">';
+                $output .= '<p>' . wp_kses_post($error['message']) . '</p>';
+                $output .= '</div>';
+                delete_transient('admin_login_sso_error');
+            } else {
+                $output .= '<div class="admin-login-sso-message error">';
+                $output .= '<p>' . __('Authentication failed. Please try again.', 'admin-login-sso') . '</p>';
+                $output .= '</div>';
+            }
+        }
+        
+        return $output . $message;
     }
 
     /**
@@ -77,38 +129,7 @@ class Admin_Login_SSO_Auth {
         // Check for emergency bypass
         $bypass_time = get_option('admin_login_sso_emergency_bypass');
         if ($bypass_time && $bypass_time > time()) {
-            echo '<div class="message info"><p>' . __('SSO is temporarily disabled. You can use standard WordPress login.', 'admin-login-sso') . '</p></div>';
             return;
-        }
-
-        // Check for re-authentication message
-        $reauth_message = get_transient('admin_login_sso_reauth_required');
-        if ($reauth_message) {
-            echo '<div class="message info"><p>' . esc_html($reauth_message['message']) . '</p></div>';
-            delete_transient('admin_login_sso_reauth_required');
-        }
-
-        // Check for errors
-        $error_message = '';
-        $error_class = '';
-        
-        if (isset($_GET['login']) && 'failed' === $_GET['login']) {
-            $error = get_transient('admin_login_sso_error');
-            if ($error) {
-                $error_message = $error['message'];
-                $error_class = 'error';
-                delete_transient('admin_login_sso_error'); // Clear the error after displaying it
-            } else {
-                $error_message = __('Authentication failed. Please try again.', 'admin-login-sso');
-                $error_class = 'error';
-            }
-        }
-        
-        // Display error message if present
-        if (!empty($error_message)) {
-            echo '<div class="admin-login-sso-message ' . esc_attr($error_class) . '">';
-            echo '<p>' . esc_html($error_message) . '</p>';
-            echo '</div>';
         }
 
         // Hide the default login form with CSS
@@ -744,7 +765,15 @@ class Admin_Login_SSO_Auth {
      * @return bool True if classic login link should be shown
      */
     private function should_show_classic_login() {
-        // Show if plugin is disabled
+        // Check admin setting first
+        $show_classic = get_option('admin_login_sso_show_classic_login', '1');
+        
+        // Don't show if admin disabled it
+        if ($show_classic !== '1' && $show_classic !== true) {
+            return false;
+        }
+        
+        // Always show if plugin is disabled
         if (!$this->is_enabled()) {
             return true;
         }
@@ -754,12 +783,12 @@ class Admin_Login_SSO_Auth {
             return true;
         }
         
-        // Show if there was an error
+        // Always show if there was an error to give users a fallback
         if (isset($_GET['login']) && 'failed' === $_GET['login']) {
             return true;
         }
         
-        return false;
+        return true; // Show by default if setting is enabled
     }
 
     /**

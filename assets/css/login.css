@@ -7,13 +7,38 @@
     background-color: #fff;
     border-left: 4px solid #dc3232;
     box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.1);
-    margin: 5px 0 15px;
-    padding: 1px 12px;
+    margin: 20px 0;
+    padding: 12px;
+    border: 1px solid #ffc9c9;
+}
+
+.admin-login-sso-message.error {
+    background-color: #fff5f5;
+}
+
+.admin-login-sso-message.info {
+    border-left-color: #00a0d2;
+    border-color: #b5d5e1;
+    background-color: #f0f8ff;
 }
 
 .admin-login-sso-message p {
     margin: 0.5em 0;
     padding: 2px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Make error messages stand out more on login page */
+#login .admin-login-sso-message {
+    margin-bottom: 24px;
+    animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+    20%, 40%, 60%, 80% { transform: translateX(2px); }
 }
 
 /* Google button container */
