@@ -11,6 +11,23 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// PHP 8.0 polyfills for better compatibility
+if (!function_exists('str_starts_with')) {
+    function str_starts_with($haystack, $needle) {
+        return strpos($haystack, $needle) === 0;
+    }
+}
+
+if (!function_exists('str_ends_with')) {
+    function str_ends_with($haystack, $needle) {
+        if ($needle === '') {
+            return true;
+        }
+        $length = strlen($needle);
+        return substr($haystack, -$length) === $needle;
+    }
+}
+
 /**
  * Authentication handler class
  */
@@ -54,6 +71,13 @@ class Admin_Login_SSO_Auth {
     public function modify_login_form() {
         // Only modify if it's an admin login and the feature is enabled
         if (!$this->is_admin_login() || !$this->is_enabled()) {
+            return;
+        }
+        
+        // Check for emergency bypass
+        $bypass_time = get_option('admin_login_sso_emergency_bypass');
+        if ($bypass_time && $bypass_time > time()) {
+            echo '<div class="message info"><p>' . __('SSO is temporarily disabled. You can use standard WordPress login.', 'admin-login-sso') . '</p></div>';
             return;
         }
 
@@ -235,8 +259,8 @@ class Admin_Login_SSO_Auth {
         // Validate email domain
         if (!$this->validate_email_domain($user_info['email'])) {
             $allowed_domains = get_option('admin_login_sso_allowed_domains');
-            $domains_list = !empty($allowed_domains) ? explode(',', $allowed_domains) : array();
-            $domains_formatted = array_map('trim', $domains_list);
+            // Use wp_parse_list for consistent parsing
+            $domains_list = !empty($allowed_domains) ? wp_parse_list($allowed_domains) : array();
             
             // Get the email domain
             $email_parts = explode('@', $user_info['email']);
@@ -248,7 +272,7 @@ class Admin_Login_SSO_Auth {
                     __('Access denied: Your email address "%1$s" with domain "%2$s" is not authorized to access this admin area. Only users with emails from the following domains are permitted: %3$s. Please use an email from an allowed domain or contact the site administrator.', 'admin-login-sso'),
                     esc_html($user_info['email']),
                     esc_html($user_domain),
-                    '<strong>' . esc_html(implode(', ', $domains_formatted)) . '</strong>'
+                    '<strong>' . esc_html(implode(', ', $domains_list)) . '</strong>'
                 )
             );
             return;
@@ -349,29 +373,64 @@ class Admin_Login_SSO_Auth {
         $allowed_domains = get_option('admin_login_sso_allowed_domains');
 
         if (empty($allowed_domains)) {
+            $this->log_error('Domain validation failed: No allowed domains configured');
             return false;
         }
 
+        // Use wp_parse_list to properly handle comma-separated values
+        // This function handles various separators and trims whitespace
         $domains = wp_parse_list($allowed_domains);
-
-        $email_domain = strtolower(substr(strrchr($email, '@'), 1));
+        
+        // Extract email domain more reliably
+        $email = strtolower(trim($email));
+        $email_parts = explode('@', $email);
+        if (count($email_parts) !== 2) {
+            $this->log_error('Domain validation failed: Invalid email format - ' . $email);
+            return false;
+        }
+        
+        $email_domain = trim($email_parts[1]);
+        
+        $this->log_error('Validating email: ' . $email . ' with domain: ' . $email_domain);
+        $this->log_error('Raw allowed_domains option: "' . $allowed_domains . '"');
+        $this->log_error('Parsed domains: [' . implode('], [', $domains) . ']');
 
         foreach ($domains as $domain) {
+            // Normalize domain: lowercase and trim all whitespace
             $domain = strtolower(trim($domain));
+            
+            // Skip empty domains
+            if (empty($domain)) {
+                continue;
+            }
+            
+            $this->log_error('Checking against domain: "' . $domain . '" (length: ' . strlen($domain) . ')');
 
+            // Exact match
             if ($domain === $email_domain) {
+                $this->log_error('Domain validation passed: Exact match for "' . $domain . '"');
                 return true;
             }
 
+            // Wildcard subdomain match
             if (str_starts_with($domain, '*.')) {
-                $domain_suffix = substr($domain, 1);
+                // Get the base domain (everything after *.)
+                $base_domain = substr($domain, 2);
+                $this->log_error('Checking wildcard domain: "' . $domain . '" with base domain: "' . $base_domain . '"');
 
-                if (str_ends_with($email_domain, $domain_suffix)) {
-                    return true;
+                // Check if email domain ends with the base domain
+                if (str_ends_with($email_domain, $base_domain)) {
+                    // Also ensure it's a proper subdomain match (not just suffix)
+                    // e.g., *.example.com should match sub.example.com but not notexample.com
+                    if ($email_domain === $base_domain || str_ends_with($email_domain, '.' . $base_domain)) {
+                        $this->log_error('Domain validation passed: Wildcard match for "' . $domain . '"');
+                        return true;
+                    }
                 }
             }
         }
 
+        $this->log_error('Domain validation failed: No matching domain found for "' . $email_domain . '"');
         return false;
     }
 
@@ -408,6 +467,12 @@ class Admin_Login_SSO_Auth {
         // Only apply restrictions if enabled
         if (!$this->is_enabled()) {
             return;
+        }
+        
+        // Check for emergency bypass
+        $bypass_time = get_option('admin_login_sso_emergency_bypass');
+        if ($bypass_time && $bypass_time > time()) {
+            return; // Bypass is active
         }
         
         // Skip restriction for AJAX requests
@@ -544,9 +609,16 @@ class Admin_Login_SSO_Auth {
      * @return bool True if enabled
      */
     private function is_enabled() {
-        return '1' === get_option('admin_login_sso_enabled') && 
-               !empty(get_option('admin_login_sso_client_id')) && 
-               !empty(get_option('admin_login_sso_client_secret'));
+        // First check if SSO is enabled
+        if ('1' !== get_option('admin_login_sso_enabled', '0')) {
+            return false;
+        }
+        
+        // Then check if credentials are configured
+        $client_id = get_option('admin_login_sso_client_id', '');
+        $client_secret = get_option('admin_login_sso_client_secret', '');
+        
+        return !empty($client_id) && !empty($client_secret);
     }
 
     /**

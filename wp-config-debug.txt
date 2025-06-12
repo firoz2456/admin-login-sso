@@ -1,0 +1,5 @@
+Add these lines to your wp-config.php file (before the "That's all, stop editing!" line):
+
+define('WP_DEBUG', true);
+define('WP_DEBUG_LOG', true);
+define('WP_DEBUG_DISPLAY', false);

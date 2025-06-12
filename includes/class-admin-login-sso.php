@@ -132,6 +132,17 @@ class Admin_Login_SSO {
                 'default' => false,
             )
         );
+        
+        register_setting(
+            'admin_login_sso_settings',
+            'admin_login_sso_show_classic_login',
+            array(
+                'type' => 'boolean',
+                'description' => __('Show classic login link', 'admin-login-sso'),
+                'sanitize_callback' => array($this, 'sanitize_checkbox'),
+                'default' => true,
+            )
+        );
     }
 
     /**
@@ -234,6 +245,34 @@ class Admin_Login_SSO {
      * @return string '1' if true, '0' if false
      */
     public function sanitize_checkbox($input) {
+        // Special handling for the enabled checkbox
+        if (current_filter() === 'sanitize_option_admin_login_sso_enabled' && !empty($input)) {
+            // Check if credentials are configured
+            $client_id = get_option('admin_login_sso_client_id');
+            $client_secret = get_option('admin_login_sso_client_secret');
+            $allowed_domains = get_option('admin_login_sso_allowed_domains');
+            
+            if (empty($client_id) || empty($client_secret)) {
+                add_settings_error(
+                    'admin_login_sso_enabled',
+                    'missing_credentials',
+                    __('Cannot enable SSO: Please configure Google Client ID and Client Secret first.', 'admin-login-sso'),
+                    'error'
+                );
+                return '0';
+            }
+            
+            if (empty($allowed_domains)) {
+                add_settings_error(
+                    'admin_login_sso_enabled',
+                    'missing_domains',
+                    __('Cannot enable SSO: Please configure at least one allowed email domain.', 'admin-login-sso'),
+                    'error'
+                );
+                return '0';
+            }
+        }
+        
         return !empty($input) ? '1' : '0';
     }
     
