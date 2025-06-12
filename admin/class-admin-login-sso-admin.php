@@ -20,9 +20,6 @@ class Admin_Login_SSO_Admin {
      * Initialize the admin functionality
      */
     public function __construct() {
-        // Add settings link to plugins page
-        add_filter('plugin_action_links_' . ADMIN_LOGIN_SSO_PLUGIN_BASENAME, array($this, 'add_settings_link'));
-        
         // Add settings sections and fields
         add_action('admin_init', array($this, 'register_settings_sections'));
     }
@@ -33,6 +30,9 @@ class Admin_Login_SSO_Admin {
     public function init() {
         // Add admin styles
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_styles'));
+        
+        // Show activation notice
+        add_action('admin_notices', array($this, 'show_activation_notice'));
     }
     
     /**
@@ -54,17 +54,6 @@ class Admin_Login_SSO_Admin {
         );
     }
 
-    /**
-     * Add settings link to plugins page
-     *
-     * @param array $links Plugin action links
-     * @return array Modified plugin action links
-     */
-    public function add_settings_link($links) {
-        $settings_link = '<a href="' . admin_url('options-general.php?page=admin-login-sso') . '">' . __('Settings', 'admin-login-sso') . '</a>';
-        array_unshift($links, $settings_link);
-        return $links;
-    }
 
     /**
      * Register settings sections and fields
@@ -312,6 +301,49 @@ class Admin_Login_SSO_Admin {
                 submit_button();
                 ?>
             </form>
+        </div>
+        <?php
+    }
+    
+    /**
+     * Show activation notice
+     */
+    public function show_activation_notice() {
+        // Check if plugin was just activated
+        if (!get_transient('admin_login_sso_activated')) {
+            return;
+        }
+        
+        // Delete the transient
+        delete_transient('admin_login_sso_activated');
+        
+        // Check if plugin is configured
+        $client_id = get_option('admin_login_sso_client_id');
+        $client_secret = get_option('admin_login_sso_client_secret');
+        $allowed_domains = get_option('admin_login_sso_allowed_domains');
+        $enabled = get_option('admin_login_sso_enabled');
+        
+        ?>
+        <div class="notice notice-info is-dismissible">
+            <p><strong><?php _e('Admin Login SSO has been activated!', 'admin-login-sso'); ?></strong></p>
+            
+            <?php if (empty($client_id) || empty($client_secret) || empty($allowed_domains)) : ?>
+                <p><?php _e('To get started, you need to configure the plugin with your Google OAuth2 credentials.', 'admin-login-sso'); ?></p>
+                <p>
+                    <a href="<?php echo esc_url(admin_url('options-general.php?page=admin-login-sso')); ?>" class="button button-primary">
+                        <?php _e('Configure Plugin Settings', 'admin-login-sso'); ?>
+                    </a>
+                </p>
+            <?php elseif (!$enabled) : ?>
+                <p><?php _e('The plugin is configured but SSO is not enabled yet.', 'admin-login-sso'); ?></p>
+                <p>
+                    <a href="<?php echo esc_url(admin_url('options-general.php?page=admin-login-sso')); ?>" class="button button-primary">
+                        <?php _e('Enable SSO', 'admin-login-sso'); ?>
+                    </a>
+                </p>
+            <?php else : ?>
+                <p><?php _e('SSO is enabled and ready to use. Make sure your email domain is in the allowed list before logging out.', 'admin-login-sso'); ?></p>
+            <?php endif; ?>
         </div>
         <?php
     }

@@ -81,6 +81,13 @@ class Admin_Login_SSO_Auth {
             return;
         }
 
+        // Check for re-authentication message
+        $reauth_message = get_transient('admin_login_sso_reauth_required');
+        if ($reauth_message) {
+            echo '<div class="message info"><p>' . esc_html($reauth_message['message']) . '</p></div>';
+            delete_transient('admin_login_sso_reauth_required');
+        }
+
         // Check for errors
         $error_message = '';
         $error_class = '';
@@ -136,17 +143,43 @@ class Admin_Login_SSO_Auth {
                         classicLink.addEventListener("click", function(e) {
                             e.preventDefault();
                             const loginForm = document.getElementById("loginform");
+                            const passwordField = document.getElementById("user_pass");
+                            const usernameField = document.getElementById("user_login");
                             loginForm.classList.toggle("show-classic-login");
                             
                             if (loginForm.classList.contains("show-classic-login")) {
+                                // Show classic login elements
                                 document.querySelectorAll("#loginform p:not(.google-login-button-container):not(.classic-login-link-container), #loginform .user-pass-wrap, #loginform .forgetmenot, #loginform .submit").forEach(function(el) {
                                     el.style.display = "block";
                                 });
+                                
+                                // Enable password and username fields
+                                if (passwordField) {
+                                    passwordField.disabled = false;
+                                    passwordField.removeAttribute("disabled");
+                                    passwordField.readOnly = false;
+                                    passwordField.removeAttribute("readonly");
+                                }
+                                if (usernameField) {
+                                    usernameField.disabled = false;
+                                    usernameField.removeAttribute("disabled");
+                                    usernameField.readOnly = false;
+                                    usernameField.removeAttribute("readonly");
+                                }
+                                
+                                // Hide Google login button
+                                document.querySelector(".google-login-button-container").style.display = "none";
+                                
                                 classicLink.textContent = "' . esc_js(__('Use Google login', 'admin-login-sso')) . '";
                             } else {
+                                // Hide classic login elements
                                 document.querySelectorAll("#loginform p:not(.google-login-button-container):not(.classic-login-link-container), #loginform .user-pass-wrap, #loginform .forgetmenot, #loginform .submit").forEach(function(el) {
                                     el.style.display = "none";
                                 });
+                                
+                                // Show Google login button
+                                document.querySelector(".google-login-button-container").style.display = "block";
+                                
                                 classicLink.textContent = "' . esc_js(__('Use classic login', 'admin-login-sso')) . '";
                             }
                         });
@@ -480,9 +513,21 @@ class Admin_Login_SSO_Auth {
             return;
         }
         
+        // Skip restriction during plugin activation/deactivation
+        if (isset($_GET['action']) && in_array($_GET['action'], array('activate', 'deactivate'))) {
+            return;
+        }
+        
+        // Skip restriction for plugin settings page
+        if (isset($_GET['page']) && 'admin-login-sso' === $_GET['page']) {
+            return;
+        }
+        
         // Skip restriction for specific admin pages
         $allowed_pages = array(
             'admin-ajax.php',
+            'plugins.php', // Allow access to plugins page
+            'options-general.php', // Allow access to settings
         );
         
         foreach ($allowed_pages as $page) {
@@ -491,9 +536,59 @@ class Admin_Login_SSO_Auth {
             }
         }
         
+        // Check if user is logged in
+        if (!is_user_logged_in()) {
+            // Not logged in at all, let WordPress handle the redirect
+            return;
+        }
+        
+        // Get current user
+        $current_user = wp_get_current_user();
+        if (!$current_user || !$current_user->exists()) {
+            return;
+        }
+        
+        // Allow super admins to bypass during initial setup
+        if (is_super_admin($current_user->ID)) {
+            // Check if plugin is properly configured
+            $client_id = get_option('admin_login_sso_client_id');
+            $client_secret = get_option('admin_login_sso_client_secret');
+            $allowed_domains = get_option('admin_login_sso_allowed_domains');
+            
+            // If not configured, allow super admin access to configure it
+            if (empty($client_id) || empty($client_secret) || empty($allowed_domains)) {
+                return;
+            }
+            
+            // Check if this is the first time restriction is being applied
+            $restriction_notice_shown = get_user_meta($current_user->ID, 'admin_login_sso_restriction_notice', true);
+            if (!$restriction_notice_shown) {
+                // Set a flag that we've shown the notice
+                update_user_meta($current_user->ID, 'admin_login_sso_restriction_notice', '1');
+                
+                // Add an admin notice instead of immediate redirect
+                add_action('admin_notices', function() {
+                    echo '<div class="notice notice-warning is-dismissible">';
+                    echo '<p><strong>' . __('Admin Login SSO Active', 'admin-login-sso') . '</strong></p>';
+                    echo '<p>' . __('Google SSO is now active. You will need to log in with Google on your next login. Make sure your email domain is in the allowed list.', 'admin-login-sso') . '</p>';
+                    echo '<p><a href="' . esc_url(admin_url('options-general.php?page=admin-login-sso')) . '" class="button button-primary">' . __('Configure Settings', 'admin-login-sso') . '</a></p>';
+                    echo '</div>';
+                });
+                return;
+            }
+        }
+        
         // If user doesn't have the Google authentication flag, redirect to login
         if (!$this->is_user_google_authenticated()) {
-            wp_safe_redirect(wp_login_url());
+            // Clear auth cookies to force re-authentication
+            wp_clear_auth_cookie();
+            
+            // Set a message for the login page
+            set_transient('admin_login_sso_reauth_required', array(
+                'message' => __('Please log in with your Google account to access the admin area.', 'admin-login-sso')
+            ), 60);
+            
+            wp_safe_redirect(wp_login_url(admin_url()));
             exit;
         }
     }

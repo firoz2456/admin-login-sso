@@ -64,6 +64,9 @@ function admin_login_sso_activate() {
         add_option('admin_login_sso_show_classic_login', '1', '', 'no');
     }
     
+    // Set a transient to show activation notice
+    set_transient('admin_login_sso_activated', true, 60);
+    
     // Add rewrite rules if needed
     flush_rewrite_rules();
 }
@@ -81,14 +84,14 @@ function admin_login_sso_plugin_action_links($links) {
     $settings_link = '<a href="' . admin_url('options-general.php?page=admin-login-sso') . '">' . __('Settings', 'admin-login-sso') . '</a>';
     
     // Add SSO status
-    $enabled = get_option('admin_login_sso_enabled');
-    if ($enabled) {
+    $enabled = get_option('admin_login_sso_enabled', '0');
+    if ($enabled === '1' || $enabled === true) {
         $status_link = '<span style="color: #28a745; font-weight: bold;">' . __('SSO: Enabled', 'admin-login-sso') . '</span>';
     } else {
         $status_link = '<span style="color: #dc3545; font-weight: bold;">' . __('SSO: Disabled', 'admin-login-sso') . '</span>';
     }
     
-    array_unshift($links, $settings_link, $status_link);
+    array_unshift($links, $status_link, $settings_link);
     return $links;
 }
 

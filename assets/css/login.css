@@ -94,6 +94,25 @@
     text-decoration: underline;
 }
 
+/* Classic login mode */
+#loginform.show-classic-login .google-login-button-container {
+    display: none !important;
+}
+
+#loginform.show-classic-login p,
+#loginform.show-classic-login .user-pass-wrap,
+#loginform.show-classic-login .forgetmenot,
+#loginform.show-classic-login .submit {
+    display: block !important;
+}
+
+/* Ensure password field is not disabled */
+#loginform #user_pass,
+#loginform #user_login {
+    opacity: 1 !important;
+    cursor: text !important;
+}
+
 /* Responsive adjustments */
 @media screen and (max-width: 782px) {
     .google-login-button {
