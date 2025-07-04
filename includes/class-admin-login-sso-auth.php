@@ -266,22 +266,9 @@ class Admin_Login_SSO_Auth {
 
         // Validate email domain
         if (!$this->validate_email_domain($user_info['email'])) {
-            $allowed_domains = get_option('admin_login_sso_allowed_domains');
-            // Use wp_parse_list for consistent parsing
-            $domains_list = !empty($allowed_domains) ? wp_parse_list($allowed_domains) : array();
-            
-            // Get the email domain
-            $email_parts = explode('@', $user_info['email']);
-            $user_domain = isset($email_parts[1]) ? $email_parts[1] : '';
-            
             $this->handle_error(
                 'domain_not_allowed',
-                sprintf(
-                    __('Access denied: Your email address "%1$s" with domain "%2$s" is not authorized to access this admin area. Only users with emails from the following domains are permitted: %3$s. Please use an email from an allowed domain or contact the site administrator.', 'admin-login-sso'),
-                    esc_html($user_info['email']),
-                    esc_html($user_domain),
-                    '<strong>' . esc_html(implode(', ', $domains_list)) . '</strong>'
-                )
+                __('Access denied: You are not authorized to log in. Please contact the site administrator.', 'admin-login-sso')
             );
             return;
         }
