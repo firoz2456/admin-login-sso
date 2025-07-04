@@ -138,7 +138,7 @@ class Admin_Login_SSO {
             'admin_login_sso_show_classic_login',
             array(
                 'type' => 'boolean',
-                'description' => __('Show classic login link', 'admin-login-sso'),
+                'description' => __('Show classic login form', 'admin-login-sso'),
                 'sanitize_callback' => array($this, 'sanitize_checkbox'),
                 'default' => true,
             )

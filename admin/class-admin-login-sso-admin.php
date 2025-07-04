@@ -111,7 +111,7 @@ class Admin_Login_SSO_Admin {
         
         add_settings_field(
             'admin_login_sso_show_classic_login',
-            __('Show classic login link', 'admin-login-sso'),
+            __('Show classic login form', 'admin-login-sso'),
             array($this, 'show_classic_login_callback'),
             'admin_login_sso_settings',
             'admin_login_sso_settings_section'
@@ -242,9 +242,9 @@ class Admin_Login_SSO_Admin {
         $show_classic = get_option('admin_login_sso_show_classic_login', '1');
         echo '<label for="admin_login_sso_show_classic_login">';
         echo '<input type="checkbox" id="admin_login_sso_show_classic_login" name="admin_login_sso_show_classic_login" value="1" ' . checked('1', $show_classic, false) . ' />';
-        echo esc_html__('Show "Use classic login" link on the login page', 'admin-login-sso');
+        echo esc_html__('Show classic login form on the login page', 'admin-login-sso');
         echo '</label>';
-        echo '<p class="description">' . esc_html__('When enabled, users can toggle between Google login and standard WordPress login.', 'admin-login-sso') . '</p>';
+        echo '<p class="description">' . esc_html__('When enabled, the traditional WordPress login form will be visible in addition to the Google login button.', 'admin-login-sso') . '</p>';
     }
 
     /**
