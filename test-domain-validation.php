@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Test script for domain validation
  * 
@@ -10,7 +11,11 @@ $wp_load_path = dirname(__FILE__) . '/../../../../wp-load.php';
 if (!file_exists($wp_load_path)) {
     die('Could not find wp-load.php. Please adjust the path.');
 }
-require_once($wp_load_path);
+require_once $wp_load_path;
+
+if (!defined('WP_DEBUG') || !WP_DEBUG) {
+    wp_die('Debugging is disabled.');
+}
 
 // Check if user is admin
 if (!current_user_can('manage_options')) {

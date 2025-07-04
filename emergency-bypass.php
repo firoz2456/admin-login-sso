@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * Emergency bypass script for Admin Login SSO
  * 
@@ -17,7 +18,7 @@ if (!current_user_can('manage_options')) {
     die('You must be logged in as an administrator to use this tool.');
 }
 
-$action = isset($_GET['action']) ? $_GET['action'] : '';
+$action = isset($_GET['action']) ? sanitize_text_field($_GET['action']) : '';
 
 ?>
 <!DOCTYPE html>
@@ -144,10 +145,10 @@ $action = isset($_GET['action']) ? $_GET['action'] : '';
                 'admin_login_sso_emergency_bypass' => get_option('admin_login_sso_emergency_bypass')
             ];
             
-            echo '<div class="info"><pre>' . print_r($settings, true) . '</pre></div>';
+            echo '<div class="info"><pre>' . esc_html(print_r($settings, true)) . '</pre></div>';
             
             // Check current user auth status
-            $current_user_id = get_current_user_id();
+            $current_user_id = (int) get_current_user_id();
             $is_google_auth = get_user_meta($current_user_id, 'admin_login_sso_authenticated', true);
             echo '<div class="info">';
             echo '<strong>Your Google Auth Status:</strong> ' . ($is_google_auth ? 'Authenticated' : 'Not authenticated') . '<br>';
@@ -158,6 +159,6 @@ $action = isset($_GET['action']) ? $_GET['action'] : '';
     ?>
     
     <hr>
-    <p><a href="?">&larr; Back to main menu</a> | <a href="<?php echo admin_url(); ?>">Go to WordPress Admin</a></p>
+    <p><a href="?">&larr; Back to main menu</a> | <a href="<?php echo esc_url(admin_url()); ?>">Go to WordPress Admin</a></p>
 </body>
 </html>

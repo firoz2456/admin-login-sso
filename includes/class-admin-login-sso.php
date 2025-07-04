@@ -181,6 +181,7 @@ class Admin_Login_SSO {
      * @return string Sanitized domains
      */
     public function sanitize_domains($input) {
+        $input = sanitize_textarea_field($input);
         if (empty($input)) {
             add_settings_error(
                 'admin_login_sso_allowed_domains',
