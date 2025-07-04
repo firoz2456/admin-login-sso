@@ -100,7 +100,8 @@ class Admin_Login_SSO_Auth {
         }
 
         // Check for errors
-        if (isset($_GET['login']) && 'failed' === $_GET['login']) {
+        $login_status = isset($_GET['login']) ? sanitize_text_field($_GET['login']) : '';
+        if ('failed' === $login_status) {
             $error = get_transient('admin_login_sso_error');
             if ($error) {
                 $output .= '<div class="admin-login-sso-message error">';
@@ -193,7 +194,7 @@ class Admin_Login_SSO_Auth {
 
         $auth_params = array(
             'client_id' => $client_id,
-            'redirect_uri' => $this->get_redirect_uri(),
+            'redirect_uri' => esc_url_raw($this->get_redirect_uri()),
             'response_type' => 'code',
             'scope' => 'openid email profile',
             'state' => $state,
@@ -201,7 +202,7 @@ class Admin_Login_SSO_Auth {
             'access_type' => 'online'
         );
 
-        return self::GOOGLE_AUTHORIZE_URL . '?' . http_build_query($auth_params);
+        return self::GOOGLE_AUTHORIZE_URL . '?' . http_build_query($auth_params, '', '&', PHP_QUERY_RFC3986);
     }
 
     /**
@@ -223,18 +224,21 @@ class Admin_Login_SSO_Auth {
 
         // Check for errors
         if (isset($_GET['error'])) {
-            $this->handle_error($_GET['error'], isset($_GET['error_description']) ? $_GET['error_description'] : '');
+            $error_code = sanitize_text_field($_GET['error']);
+            $error_desc = isset($_GET['error_description']) ? sanitize_text_field($_GET['error_description']) : '';
+            $this->handle_error($error_code, $error_desc);
             return;
         }
 
         // Verify state parameter to prevent CSRF
-        if (!isset($_GET['state']) || !get_transient('admin_login_sso_state_' . $_GET['state'])) {
+        $state = isset($_GET['state']) ? sanitize_key($_GET['state']) : '';
+        if (empty($state) || !get_transient('admin_login_sso_state_' . $state)) {
             $this->handle_error('invalid_state', __('Invalid state parameter. Please try again.', 'admin-login-sso'));
             return;
         }
 
         // Delete the transient since we've verified it
-        delete_transient('admin_login_sso_state_' . $_GET['state']);
+        delete_transient('admin_login_sso_state_' . $state);
 
         // Check for authorization code
         if (!isset($_GET['code'])) {
@@ -242,8 +246,10 @@ class Admin_Login_SSO_Auth {
             return;
         }
 
+        $code = sanitize_text_field($_GET['code']);
+
         // Exchange authorization code for access token
-        $token_data = $this->get_token($_GET['code']);
+        $token_data = $this->get_token($code);
         if (!$token_data || isset($token_data['error'])) {
             $error_message = isset($token_data['error_description']) ? $token_data['error_description'] : __('Failed to get access token. Please try again.', 'admin-login-sso');
             $this->handle_error('token_error', $error_message);
@@ -309,12 +315,17 @@ class Admin_Login_SSO_Auth {
         $token_request = wp_remote_post(
             self::GOOGLE_TOKEN_URL,
             array(
-                'body' => array(
-                    'code' => $code,
-                    'client_id' => $client_id,
+                'timeout' => 10,
+                'headers' => array(
+                    'Accept'     => 'application/json',
+                    'User-Agent' => ADMIN_LOGIN_SSO_USER_AGENT,
+                ),
+                'body'    => array(
+                    'code'          => $code,
+                    'client_id'     => $client_id,
                     'client_secret' => $client_secret,
-                    'redirect_uri' => $this->get_redirect_uri(),
-                    'grant_type' => 'authorization_code',
+                    'redirect_uri'  => esc_url_raw($this->get_redirect_uri()),
+                    'grant_type'    => 'authorization_code',
                 ),
             )
         );
@@ -344,8 +355,10 @@ class Admin_Login_SSO_Auth {
         $user_info_request = wp_remote_get(
             self::GOOGLE_USER_INFO_URL,
             array(
+                'timeout' => 10,
                 'headers' => array(
                     'Authorization' => 'Bearer ' . $access_token,
+                    'User-Agent'   => ADMIN_LOGIN_SSO_USER_AGENT,
                 ),
             )
         );
@@ -455,7 +468,16 @@ class Admin_Login_SSO_Auth {
         
         if (!empty($token)) {
             // Revoke token
-            wp_remote_get(self::GOOGLE_REVOKE_URL . '?token=' . $token);
+            wp_remote_get(
+                self::GOOGLE_REVOKE_URL . '?token=' . rawurlencode($token),
+                array(
+                    'timeout'   => 10,
+                    'sslverify' => true,
+                    'headers'   => array(
+                        'User-Agent' => ADMIN_LOGIN_SSO_USER_AGENT,
+                    ),
+                )
+            );
             
             // Delete user meta
             delete_user_meta(get_current_user_id(), 'admin_login_sso_access_token');
@@ -483,12 +505,14 @@ class Admin_Login_SSO_Auth {
         }
         
         // Skip restriction during plugin activation/deactivation
-        if (isset($_GET['action']) && in_array($_GET['action'], array('activate', 'deactivate'))) {
+        $action = isset($_GET['action']) ? sanitize_key($_GET['action']) : '';
+        if (in_array($action, array('activate', 'deactivate'), true)) {
             return;
         }
-        
+
         // Skip restriction for plugin settings page
-        if (isset($_GET['page']) && 'admin-login-sso' === $_GET['page']) {
+        $page = isset($_GET['page']) ? sanitize_key($_GET['page']) : '';
+        if ('admin-login-sso' === $page) {
             return;
         }
         
@@ -695,7 +719,7 @@ class Admin_Login_SSO_Auth {
         
         // Check for admin query param
         if (isset($_GET['redirect_to'])) {
-            $redirect_to = $_GET['redirect_to'];
+            $redirect_to = sanitize_text_field(wp_unslash($_GET['redirect_to']));
             $is_admin = false !== strpos($redirect_to, admin_url());
         }
         

@@ -25,6 +25,7 @@ define('ADMIN_LOGIN_SSO_VERSION', '1.0.0');
 define('ADMIN_LOGIN_SSO_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ADMIN_LOGIN_SSO_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('ADMIN_LOGIN_SSO_PLUGIN_BASENAME', plugin_basename(__FILE__));
+define('ADMIN_LOGIN_SSO_USER_AGENT', 'Admin Login SSO/' . ADMIN_LOGIN_SSO_VERSION);
 
 // Include required files
 require_once ADMIN_LOGIN_SSO_PLUGIN_DIR . 'includes/class-admin-login-sso.php';
