@@ -32,7 +32,7 @@ Admin Login SSO provides a secure and convenient way to replace the traditional 
 
 1. Upload the `admin-login-sso` folder to the `/wp-content/plugins/` directory
 2. Activate the plugin through the 'Plugins' menu in WordPress
-3. Go to 'Settings > Google Admin Login' to configure the plugin
+3. Go to 'Settings > Admin Login SSO' to configure the plugin
 4. Set up Google OAuth credentials in the Google Cloud Console
 5. Enter your Client ID, Client Secret, and allowed domains
 6. Enable the plugin and test the login
