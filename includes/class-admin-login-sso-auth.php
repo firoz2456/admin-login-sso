@@ -13,13 +13,15 @@ if (!defined('ABSPATH')) {
 
 // PHP 8.0 polyfills for better compatibility
 if (!function_exists('str_starts_with')) {
-    function str_starts_with($haystack, $needle) {
+    function str_starts_with($haystack, $needle)
+    {
         return strpos($haystack, $needle) === 0;
     }
 }
 
 if (!function_exists('str_ends_with')) {
-    function str_ends_with($haystack, $needle) {
+    function str_ends_with($haystack, $needle)
+    {
         if ($needle === '') {
             return true;
         }
@@ -31,7 +33,8 @@ if (!function_exists('str_ends_with')) {
 /**
  * Authentication handler class
  */
-class Admin_Login_SSO_Auth {
+class Admin_Login_SSO_Auth
+{
 
     /**
      * Google OAuth2 endpoints
@@ -49,21 +52,22 @@ class Admin_Login_SSO_Auth {
     /**
      * Initialize the authentication functionality
      */
-    public function init() {
+    public function init()
+    {
         // Handle login form modification
         add_action('login_form', array($this, 'modify_login_form'));
         add_action('login_enqueue_scripts', array($this, 'enqueue_login_assets'));
-        
+
         // Display error messages above the login form
         add_action('login_message', array($this, 'display_login_messages'));
-        
+
         // Handle OAuth callback
         add_action('init', array($this, 'handle_oauth_callback'));
-        
+
         // Handle admin-only restriction
         add_action('admin_init', array($this, 'restrict_admin_access'));
         add_filter('rest_authentication_errors', array($this, 'restrict_rest_api'), 10, 1);
-        
+
         // Handle logout
         add_action('wp_logout', array($this, 'handle_logout'));
     }
@@ -74,14 +78,15 @@ class Admin_Login_SSO_Auth {
      * @param string $message Existing login message
      * @return string Modified login message
      */
-    public function display_login_messages($message) {
+    public function display_login_messages($message)
+    {
         // Only show messages if it's an admin login and the feature is enabled
         if (!$this->is_admin_login() || !$this->is_enabled()) {
             return $message;
         }
-        
+
         $output = '';
-        
+
         // Check for emergency bypass
         $bypass_time = get_option('admin_login_sso_emergency_bypass');
         if ($bypass_time && $bypass_time > time()) {
@@ -114,19 +119,20 @@ class Admin_Login_SSO_Auth {
                 $output .= '</div>';
             }
         }
-        
+
         return $output . $message;
     }
 
     /**
      * Modify the login form to show Google sign-in
      */
-    public function modify_login_form() {
+    public function modify_login_form()
+    {
         // Only modify if it's an admin login and the feature is enabled
         if (!$this->is_admin_login() || !$this->is_enabled()) {
             return;
         }
-        
+
         // Check for emergency bypass
         $bypass_time = get_option('admin_login_sso_emergency_bypass');
         if ($bypass_time && $bypass_time > time()) {
@@ -162,7 +168,8 @@ class Admin_Login_SSO_Auth {
     /**
      * Enqueue login assets
      */
-    public function enqueue_login_assets() {
+    public function enqueue_login_assets()
+    {
         if (!$this->is_admin_login() || !$this->is_enabled()) {
             return;
         }
@@ -182,7 +189,8 @@ class Admin_Login_SSO_Auth {
      *
      * @return string Authorization URL
      */
-    public function get_auth_url() {
+    public function get_auth_url()
+    {
         $client_id = get_option('admin_login_sso_client_id');
         if (empty($client_id)) {
             return '#';
@@ -210,14 +218,16 @@ class Admin_Login_SSO_Auth {
      *
      * @return string Redirect URI
      */
-    private function get_redirect_uri() {
+    private function get_redirect_uri()
+    {
         return site_url('wp-login.php?action=admin_login_sso_callback');
     }
 
     /**
      * Handle OAuth callback
      */
-    public function handle_oauth_callback() {
+    public function handle_oauth_callback()
+    {
         if (!isset($_GET['action']) || 'admin_login_sso_callback' !== $_GET['action']) {
             return;
         }
@@ -291,7 +301,8 @@ class Admin_Login_SSO_Auth {
      * @param string $code Authorization code
      * @return array|false Token data or false on failure
      */
-    private function get_token($code) {
+    private function get_token($code)
+    {
         $client_id = get_option('admin_login_sso_client_id');
         $client_secret = get_option('admin_login_sso_client_secret');
 
@@ -304,15 +315,15 @@ class Admin_Login_SSO_Auth {
             array(
                 'timeout' => 10,
                 'headers' => array(
-                    'Accept'     => 'application/json',
+                    'Accept' => 'application/json',
                     'User-Agent' => ADMIN_LOGIN_SSO_USER_AGENT,
                 ),
-                'body'    => array(
-                    'code'          => $code,
-                    'client_id'     => $client_id,
+                'body' => array(
+                    'code' => $code,
+                    'client_id' => $client_id,
                     'client_secret' => $client_secret,
-                    'redirect_uri'  => esc_url_raw($this->get_redirect_uri()),
-                    'grant_type'    => 'authorization_code',
+                    'redirect_uri' => esc_url_raw($this->get_redirect_uri()),
+                    'grant_type' => 'authorization_code',
                 ),
             )
         );
@@ -338,14 +349,15 @@ class Admin_Login_SSO_Auth {
      * @param string $access_token Access token
      * @return array|false User info or false on failure
      */
-    private function get_user_info($access_token) {
+    private function get_user_info($access_token)
+    {
         $user_info_request = wp_remote_get(
             self::GOOGLE_USER_INFO_URL,
             array(
                 'timeout' => 10,
                 'headers' => array(
                     'Authorization' => 'Bearer ' . $access_token,
-                    'User-Agent'   => ADMIN_LOGIN_SSO_USER_AGENT,
+                    'User-Agent' => ADMIN_LOGIN_SSO_USER_AGENT,
                 ),
             )
         );
@@ -371,7 +383,8 @@ class Admin_Login_SSO_Auth {
      * @param string $email User email
      * @return bool True if domain is allowed, false otherwise
      */
-    private function validate_email_domain(string $email): bool {
+    private function validate_email_domain(string $email): bool
+    {
         $allowed_domains = get_option('admin_login_sso_allowed_domains');
 
         if (empty($allowed_domains)) {
@@ -382,7 +395,7 @@ class Admin_Login_SSO_Auth {
         // Use wp_parse_list to properly handle comma-separated values
         // This function handles various separators and trims whitespace
         $domains = wp_parse_list($allowed_domains);
-        
+
         // Extract email domain more reliably
         $email = strtolower(trim($email));
         $email_parts = explode('@', $email);
@@ -390,9 +403,9 @@ class Admin_Login_SSO_Auth {
             $this->log_error('Domain validation failed: Invalid email format - ' . $email);
             return false;
         }
-        
+
         $email_domain = trim($email_parts[1]);
-        
+
         $this->log_error('Validating email: ' . $email . ' with domain: ' . $email_domain);
         $this->log_error('Raw allowed_domains option: "' . $allowed_domains . '"');
         $this->log_error('Parsed domains: [' . implode('], [', $domains) . ']');
@@ -400,12 +413,12 @@ class Admin_Login_SSO_Auth {
         foreach ($domains as $domain) {
             // Normalize domain: lowercase and trim all whitespace
             $domain = strtolower(trim($domain));
-            
+
             // Skip empty domains
             if (empty($domain)) {
                 continue;
             }
-            
+
             $this->log_error('Checking against domain: "' . $domain . '" (length: ' . strlen($domain) . ')');
 
             // Exact match
@@ -442,7 +455,8 @@ class Admin_Login_SSO_Auth {
      * @param array $user_info User info from Google
      * @return WP_User|WP_Error WP_User on success, WP_Error on failure
      */
-    private function process_user_login($user_info) {
+    private function process_user_login($user_info)
+    {
         $user_handler = new Admin_Login_SSO_User();
         return $user_handler->process_user($user_info);
     }
@@ -450,22 +464,23 @@ class Admin_Login_SSO_Auth {
     /**
      * Handle logout by revoking Google token
      */
-    public function handle_logout() {
+    public function handle_logout()
+    {
         $token = get_user_meta(get_current_user_id(), 'admin_login_sso_access_token', true);
-        
+
         if (!empty($token)) {
             // Revoke token
             wp_remote_get(
                 self::GOOGLE_REVOKE_URL . '?token=' . rawurlencode($token),
                 array(
-                    'timeout'   => 10,
+                    'timeout' => 10,
                     'sslverify' => true,
-                    'headers'   => array(
+                    'headers' => array(
                         'User-Agent' => ADMIN_LOGIN_SSO_USER_AGENT,
                     ),
                 )
             );
-            
+
             // Delete user meta
             delete_user_meta(get_current_user_id(), 'admin_login_sso_access_token');
         }
@@ -474,23 +489,24 @@ class Admin_Login_SSO_Auth {
     /**
      * Restrict admin access to Google-authenticated users
      */
-    public function restrict_admin_access() {
+    public function restrict_admin_access()
+    {
         // Only apply restrictions if enabled
         if (!$this->is_enabled()) {
             return;
         }
-        
+
         // Check for emergency bypass
         $bypass_time = get_option('admin_login_sso_emergency_bypass');
         if ($bypass_time && $bypass_time > time()) {
             return; // Bypass is active
         }
-        
+
         // Skip restriction for AJAX requests
         if (wp_doing_ajax()) {
             return;
         }
-        
+
         // Skip restriction during plugin activation/deactivation
         $action = isset($_GET['action']) ? sanitize_key($_GET['action']) : '';
         if (in_array($action, array('activate', 'deactivate'), true)) {
@@ -502,52 +518,52 @@ class Admin_Login_SSO_Auth {
         if ('admin-login-sso' === $page) {
             return;
         }
-        
+
         // Skip restriction for specific admin pages
         $allowed_pages = array(
             'admin-ajax.php',
             'plugins.php', // Allow access to plugins page
             'options-general.php', // Allow access to settings
         );
-        
+
         foreach ($allowed_pages as $page) {
             if (false !== strpos($_SERVER['SCRIPT_NAME'], $page)) {
                 return;
             }
         }
-        
+
         // Check if user is logged in
         if (!is_user_logged_in()) {
             // Not logged in at all, let WordPress handle the redirect
             return;
         }
-        
+
         // Get current user
         $current_user = wp_get_current_user();
         if (!$current_user || !$current_user->exists()) {
             return;
         }
-        
+
         // Allow super admins to bypass during initial setup
         if (is_super_admin($current_user->ID)) {
             // Check if plugin is properly configured
             $client_id = get_option('admin_login_sso_client_id');
             $client_secret = get_option('admin_login_sso_client_secret');
             $allowed_domains = get_option('admin_login_sso_allowed_domains');
-            
+
             // If not configured, allow super admin access to configure it
             if (empty($client_id) || empty($client_secret) || empty($allowed_domains)) {
                 return;
             }
-            
+
             // Check if this is the first time restriction is being applied
             $restriction_notice_shown = get_user_meta($current_user->ID, 'admin_login_sso_restriction_notice', true);
             if (!$restriction_notice_shown) {
                 // Set a flag that we've shown the notice
                 update_user_meta($current_user->ID, 'admin_login_sso_restriction_notice', '1');
-                
+
                 // Add an admin notice instead of immediate redirect
-                add_action('admin_notices', function() {
+                add_action('admin_notices', function () {
                     echo '<div class="notice notice-warning is-dismissible">';
                     echo '<p><strong>' . __('Admin Login SSO Active', 'admin-login-sso') . '</strong></p>';
                     echo '<p>' . __('Google SSO is now active. You will need to log in with Google on your next login. Make sure your email domain is in the allowed list.', 'admin-login-sso') . '</p>';
@@ -557,17 +573,17 @@ class Admin_Login_SSO_Auth {
                 return;
             }
         }
-        
+
         // If user doesn't have the Google authentication flag, redirect to login
         if (!$this->is_user_google_authenticated()) {
             // Clear auth cookies to force re-authentication
             wp_clear_auth_cookie();
-            
+
             // Set a message for the login page
             set_transient('admin_login_sso_reauth_required', array(
                 'message' => __('Please log in with your Google account to access the admin area.', 'admin-login-sso')
             ), 60);
-            
+
             wp_safe_redirect(wp_login_url(admin_url()));
             exit;
         }
@@ -580,28 +596,29 @@ class Admin_Login_SSO_Auth {
      *                                    method wasn't used, true if authentication succeeded.
      * @return WP_Error|null|bool
      */
-    public function restrict_rest_api($errors) {
+    public function restrict_rest_api($errors)
+    {
         // If there's already an error, return it
         if (is_wp_error($errors)) {
             return $errors;
         }
-        
+
         // Only apply restrictions if enabled
         if (!$this->is_enabled()) {
             return $errors;
         }
-        
+
         // Only restrict access to WP REST API endpoints that require edit capability
         if (0 !== strpos($_SERVER['REQUEST_URI'], '/wp-json/wp/v2/')) {
             return $errors;
         }
-        
+
         // Get current user
         $current_user = wp_get_current_user();
         if (!$current_user || !$current_user->exists()) {
             return $errors;
         }
-        
+
         // Check if the user has edit capability and is Google authenticated
         if ($this->user_has_edit_capability($current_user) && !$this->is_user_google_authenticated()) {
             return new WP_Error(
@@ -610,7 +627,7 @@ class Admin_Login_SSO_Auth {
                 array('status' => 403)
             );
         }
-        
+
         return $errors;
     }
 
@@ -620,19 +637,20 @@ class Admin_Login_SSO_Auth {
      * @param WP_User $user WordPress user object
      * @return bool True if user has edit capability
      */
-    private function user_has_edit_capability($user) {
+    private function user_has_edit_capability($user)
+    {
         if (!$user || !$user->exists()) {
             return false;
         }
-        
+
         $post_types = get_post_types(array('show_in_rest' => true), 'objects');
-        
+
         foreach ($post_types as $post_type) {
             if (current_user_can($post_type->cap->edit_posts)) {
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -641,13 +659,14 @@ class Admin_Login_SSO_Auth {
      *
      * @return bool True if user is Google authenticated
      */
-    private function is_user_google_authenticated() {
+    private function is_user_google_authenticated()
+    {
         $current_user_id = get_current_user_id();
-        
+
         if (!$current_user_id) {
             return false;
         }
-        
+
         return (bool) get_user_meta($current_user_id, 'admin_login_sso_authenticated', true);
     }
 
@@ -657,15 +676,16 @@ class Admin_Login_SSO_Auth {
      * @param string $code Error code
      * @param string $message Error message
      */
-    private function handle_error($code, $message) {
+    private function handle_error($code, $message)
+    {
         $this->log_error("Authentication error: [$code] $message");
-        
+
         // Store error in a transient to display it on the login page
         set_transient('admin_login_sso_error', array(
             'code' => $code,
             'message' => $message
         ), 60); // Expires after 60 seconds
-        
+
         wp_safe_redirect(
             add_query_arg(
                 array(
@@ -683,16 +703,17 @@ class Admin_Login_SSO_Auth {
      *
      * @return bool True if enabled
      */
-    private function is_enabled() {
+    private function is_enabled()
+    {
         // First check if SSO is enabled
         if ('1' !== get_option('admin_login_sso_enabled', '0')) {
             return false;
         }
-        
+
         // Then check if credentials are configured
         $client_id = get_option('admin_login_sso_client_id', '');
         $client_secret = get_option('admin_login_sso_client_secret', '');
-        
+
         return !empty($client_id) && !empty($client_secret);
     }
 
@@ -701,20 +722,21 @@ class Admin_Login_SSO_Auth {
      *
      * @return bool True if it's an admin login
      */
-    private function is_admin_login() {
+    private function is_admin_login()
+    {
         $is_admin = false;
-        
+
         // Check for admin query param
         if (isset($_GET['redirect_to'])) {
             $redirect_to = sanitize_text_field(wp_unslash($_GET['redirect_to']));
             $is_admin = false !== strpos($redirect_to, admin_url());
         }
-        
+
         // Always consider it admin login if admin-login-sso is enabled
         if ($this->is_enabled()) {
             $is_admin = true;
         }
-        
+
         return $is_admin;
     }
 
@@ -724,7 +746,8 @@ class Admin_Login_SSO_Auth {
      *
      * @param string $message Error message
      */
-    private function log_error($message) {
+    private function log_error($message)
+    {
         if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
             error_log('[Admin Login SSO] ' . $message);
         }
