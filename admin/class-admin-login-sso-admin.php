@@ -62,7 +62,7 @@ class Admin_Login_SSO_Admin {
         // Add settings section
         add_settings_section(
             'admin_login_sso_settings_section',
-            __('Google Admin Login Settings', 'admin-login-sso'),
+            __('Admin Login SSO Settings', 'admin-login-sso'),
             array($this, 'settings_section_callback'),
             'admin_login_sso_settings'
         );

@@ -150,8 +150,8 @@ class Admin_Login_SSO {
      */
     public function add_settings_page() {
         add_options_page(
-            __('Google Admin Login', 'admin-login-sso'),
-            __('Google Admin Login', 'admin-login-sso'),
+            __('Admin Login SSO', 'admin-login-sso'),
+            __('Admin Login SSO', 'admin-login-sso'),
             'manage_options',
             'admin-login-sso',
             array($this, 'render_settings_page')
