@@ -277,12 +277,7 @@ class Admin_Login_SSO_Admin {
             
             <?php
             // Show SSO status notice
-            if ($enabled) {
-                echo '<div class="notice notice-success" style="border-left-color: #28a745;">';
-                echo '<p style="font-size: 16px;"><strong>' . esc_html__('🟢 SSO Status: ENABLED', 'admin-login-sso') . '</strong></p>';
-                echo '<p>' . esc_html__('Google authentication is required for all admin logins.', 'admin-login-sso') . '</p>';
-                echo '</div>';
-            } else {
+            if (!$enabled) {
                 echo '<div class="notice notice-warning" style="border-left-color: #ffc107;">';
                 echo '<p style="font-size: 16px;"><strong>' . esc_html__('🟡 SSO Status: DISABLED', 'admin-login-sso') . '</strong></p>';
                 echo '<p>' . esc_html__('The plugin is active but SSO is disabled. Standard WordPress login is being used.', 'admin-login-sso') . '</p>';
