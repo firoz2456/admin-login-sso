@@ -132,15 +132,19 @@ class Admin_Login_SSO_Auth {
             return;
         }
 
-        // Hide the default login form with CSS
-        echo '<style type="text/css">
-            #loginform p:not(.google-login-button-container):not(.classic-login-link-container),
-            #loginform .user-pass-wrap,
-            #loginform .forgetmenot,
-            #loginform .submit {
-                display: none;
-            }
-        </style>';
+        $show_classic = get_option('admin_login_sso_show_classic_login', '1');
+
+        if ($show_classic !== '1' && $show_classic !== true) {
+            // Hide the default login form when classic login is disabled
+            echo '<style type="text/css">
+                #loginform p:not(.google-login-button-container),
+                #loginform .user-pass-wrap,
+                #loginform .forgetmenot,
+                #loginform .submit {
+                    display: none;
+                }
+            </style>';
+        }
 
         // Add Google login button
         echo '<div class="google-login-button-container">';
@@ -150,64 +154,8 @@ class Admin_Login_SSO_Auth {
         echo '</a>';
         echo '</div>';
 
-        // Add classic login link if needed
-        if ($this->should_show_classic_login()) {
-            echo '<div class="classic-login-link-container">';
-            echo '<a href="#" class="classic-login-link">' . esc_html__('Use classic login', 'admin-login-sso') . '</a>';
-            echo '</div>';
-            
-            // Add JavaScript to toggle between login methods
-            echo '<script type="text/javascript">
-                document.addEventListener("DOMContentLoaded", function() {
-                    const classicLink = document.querySelector(".classic-login-link");
-                    if (classicLink) {
-                        classicLink.addEventListener("click", function(e) {
-                            e.preventDefault();
-                            const loginForm = document.getElementById("loginform");
-                            const passwordField = document.getElementById("user_pass");
-                            const usernameField = document.getElementById("user_login");
-                            loginForm.classList.toggle("show-classic-login");
-                            
-                            if (loginForm.classList.contains("show-classic-login")) {
-                                // Show classic login elements
-                                document.querySelectorAll("#loginform p:not(.google-login-button-container):not(.classic-login-link-container), #loginform .user-pass-wrap, #loginform .forgetmenot, #loginform .submit").forEach(function(el) {
-                                    el.style.display = "block";
-                                });
-                                
-                                // Enable password and username fields
-                                if (passwordField) {
-                                    passwordField.disabled = false;
-                                    passwordField.removeAttribute("disabled");
-                                    passwordField.readOnly = false;
-                                    passwordField.removeAttribute("readonly");
-                                }
-                                if (usernameField) {
-                                    usernameField.disabled = false;
-                                    usernameField.removeAttribute("disabled");
-                                    usernameField.readOnly = false;
-                                    usernameField.removeAttribute("readonly");
-                                }
-                                
-                                // Hide Google login button
-                                document.querySelector(".google-login-button-container").style.display = "none";
-                                
-                                classicLink.textContent = "' . esc_js(__('Use Google login', 'admin-login-sso')) . '";
-                            } else {
-                                // Hide classic login elements
-                                document.querySelectorAll("#loginform p:not(.google-login-button-container):not(.classic-login-link-container), #loginform .user-pass-wrap, #loginform .forgetmenot, #loginform .submit").forEach(function(el) {
-                                    el.style.display = "none";
-                                });
-                                
-                                // Show Google login button
-                                document.querySelector(".google-login-button-container").style.display = "block";
-                                
-                                classicLink.textContent = "' . esc_js(__('Use classic login', 'admin-login-sso')) . '";
-                            }
-                        });
-                    }
-                });
-            </script>';
-        }
+        // Classic login is shown automatically based on the admin setting,
+        // so no toggle link is required.
     }
 
     /**
@@ -759,37 +707,6 @@ class Admin_Login_SSO_Auth {
         return $is_admin;
     }
 
-    /**
-     * Check if classic login link should be shown
-     *
-     * @return bool True if classic login link should be shown
-     */
-    private function should_show_classic_login() {
-        // Check admin setting first
-        $show_classic = get_option('admin_login_sso_show_classic_login', '1');
-        
-        // Don't show if admin disabled it
-        if ($show_classic !== '1' && $show_classic !== true) {
-            return false;
-        }
-        
-        // Always show if plugin is disabled
-        if (!$this->is_enabled()) {
-            return true;
-        }
-        
-        // Show if user is already authenticated
-        if (is_user_logged_in()) {
-            return true;
-        }
-        
-        // Always show if there was an error to give users a fallback
-        if (isset($_GET['login']) && 'failed' === $_GET['login']) {
-            return true;
-        }
-        
-        return true; // Show by default if setting is enabled
-    }
 
     /**
      * Log error to debug.log if WP_DEBUG_LOG is enabled

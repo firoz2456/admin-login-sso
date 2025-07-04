@@ -64,7 +64,7 @@ No, this plugin only affects admin login (/wp-admin). Front-end login and other 
 
 = What if Google authentication fails? =
 
-The plugin provides a discreet fallback link ("Use classic login") that allows using the traditional WordPress login form if Google authentication fails.
+If the classic login form is enabled in the settings, users can sign in using the standard WordPress login form as a fallback.
 
 == Screenshots ==
 
