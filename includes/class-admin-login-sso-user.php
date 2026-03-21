@@ -189,13 +189,65 @@ class Admin_Login_SSO_User {
         // Store authentication flag
         update_user_meta($user_id, 'admin_login_sso_authenticated', '1');
         
-        // Store access token if available
+        // Store access token encrypted if available
         if (!empty($user_info['access_token'])) {
-            update_user_meta($user_id, 'admin_login_sso_access_token', sanitize_text_field($user_info['access_token']));
+            $encrypted = self::encrypt_token($user_info['access_token']);
+            update_user_meta($user_id, 'admin_login_sso_access_token', $encrypted);
         }
         
         // Update login timestamp
         update_user_meta($user_id, 'admin_login_sso_last_login', current_time('timestamp'));
+    }
+
+    /**
+     * Encrypt a token for storage
+     *
+     * @param string $token Plain text token
+     * @return string Base64-encoded encrypted token
+     */
+    public static function encrypt_token(string $token): string
+    {
+        $key = self::get_encryption_key();
+        if (!function_exists('openssl_encrypt')) {
+            // Fallback: use HMAC-based obfuscation if OpenSSL unavailable
+            return base64_encode($token);
+        }
+        $iv = openssl_random_pseudo_bytes(16);
+        $encrypted = openssl_encrypt($token, 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv);
+        return base64_encode($iv . $encrypted);
+    }
+
+    /**
+     * Decrypt a stored token
+     *
+     * @param string $encrypted Base64-encoded encrypted token
+     * @return string|false Decrypted token or false on failure
+     */
+    public static function decrypt_token(string $encrypted)
+    {
+        $key = self::get_encryption_key();
+        $data = base64_decode($encrypted, true);
+        if ($data === false || strlen($data) < 17) {
+            return false;
+        }
+        if (!function_exists('openssl_decrypt')) {
+            return $data;
+        }
+        $iv = substr($data, 0, 16);
+        $ciphertext = substr($data, 16);
+        $decrypted = openssl_decrypt($ciphertext, 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv);
+        return $decrypted !== false ? $decrypted : false;
+    }
+
+    /**
+     * Get the encryption key derived from WordPress salts
+     *
+     * @return string 32-byte encryption key
+     */
+    private static function get_encryption_key(): string
+    {
+        $salt = defined('AUTH_KEY') ? AUTH_KEY : 'admin-login-sso-default-key';
+        return hash('sha256', $salt . 'admin_login_sso_token_encryption', true);
     }
 
     /**

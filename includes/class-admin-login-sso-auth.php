@@ -50,6 +50,16 @@ class Admin_Login_SSO_Auth
     const STATE_EXPIRATION = 300;
 
     /**
+     * Rate limit: max OAuth callback attempts per IP within the window
+     */
+    const RATE_LIMIT_MAX_ATTEMPTS = 10;
+
+    /**
+     * Rate limit window in seconds (15 minutes)
+     */
+    const RATE_LIMIT_WINDOW = 900;
+
+    /**
      * Initialize the authentication functionality
      */
     public function init()
@@ -232,6 +242,12 @@ class Admin_Login_SSO_Auth
             return;
         }
 
+        // Rate limit OAuth callback attempts per IP
+        if ($this->is_rate_limited()) {
+            $this->handle_error('rate_limited', __('Too many login attempts. Please wait a few minutes and try again.', 'admin-login-sso'));
+            return;
+        }
+
         // Check for errors
         if (isset($_GET['error'])) {
             $error_code = sanitize_text_field($_GET['error']);
@@ -304,7 +320,7 @@ class Admin_Login_SSO_Auth
     private function get_token($code)
     {
         $client_id = get_option('admin_login_sso_client_id');
-        $client_secret = get_option('admin_login_sso_client_secret');
+        $client_secret = self::get_client_secret();
 
         if (empty($client_id) || empty($client_secret)) {
             return false;
@@ -466,7 +482,8 @@ class Admin_Login_SSO_Auth
      */
     public function handle_logout()
     {
-        $token = get_user_meta(get_current_user_id(), 'admin_login_sso_access_token', true);
+        $encrypted_token = get_user_meta(get_current_user_id(), 'admin_login_sso_access_token', true);
+        $token = !empty($encrypted_token) ? Admin_Login_SSO_User::decrypt_token($encrypted_token) : false;
 
         if (!empty($token)) {
             // Revoke token
@@ -712,7 +729,7 @@ class Admin_Login_SSO_Auth
 
         // Then check if credentials are configured
         $client_id = get_option('admin_login_sso_client_id', '');
-        $client_secret = get_option('admin_login_sso_client_secret', '');
+        $client_secret = self::get_client_secret();
 
         return !empty($client_id) && !empty($client_secret);
     }
@@ -740,6 +757,61 @@ class Admin_Login_SSO_Auth
         return $is_admin;
     }
 
+
+    /**
+     * Get the client secret, preferring environment variable over wp_options
+     *
+     * @return string Client secret
+     */
+    public static function get_client_secret(): string
+    {
+        // Prefer environment variable for security (avoids storing secret in DB)
+        $env_secret = getenv('ADMIN_LOGIN_SSO_CLIENT_SECRET');
+        if (!empty($env_secret)) {
+            return $env_secret;
+        }
+
+        // Check PHP constant (can be defined in wp-config.php)
+        if (defined('ADMIN_LOGIN_SSO_CLIENT_SECRET') && !empty(ADMIN_LOGIN_SSO_CLIENT_SECRET)) {
+            return ADMIN_LOGIN_SSO_CLIENT_SECRET;
+        }
+
+        // Fallback to database option
+        return (string) get_option('admin_login_sso_client_secret', '');
+    }
+
+    /**
+     * Check if the current IP is rate limited on OAuth callbacks
+     *
+     * @return bool True if rate limited
+     */
+    private function is_rate_limited(): bool
+    {
+        $ip = $this->get_client_ip();
+        $transient_key = 'admin_login_sso_rl_' . md5($ip);
+        $attempts = (int) get_transient($transient_key);
+
+        if ($attempts >= self::RATE_LIMIT_MAX_ATTEMPTS) {
+            $this->log_error('Rate limited IP: ' . $ip . ' (' . $attempts . ' attempts)');
+            return true;
+        }
+
+        set_transient($transient_key, $attempts + 1, self::RATE_LIMIT_WINDOW);
+        return false;
+    }
+
+    /**
+     * Get the client IP address
+     *
+     * @return string Client IP
+     */
+    private function get_client_ip(): string
+    {
+        if (!empty($_SERVER['REMOTE_ADDR'])) {
+            return sanitize_text_field($_SERVER['REMOTE_ADDR']);
+        }
+        return '0.0.0.0';
+    }
 
     /**
      * Log error to debug.log if WP_DEBUG_LOG is enabled

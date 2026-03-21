@@ -19,6 +19,14 @@ if (!current_user_can('manage_options')) {
 }
 
 $action = isset($_GET['action']) ? sanitize_text_field($_GET['action']) : '';
+$nonce = isset($_GET['_wpnonce']) ? sanitize_text_field($_GET['_wpnonce']) : '';
+
+// Verify nonce for all state-changing actions
+if (!empty($action) && in_array($action, array('disable_plugin', 'clear_auth_meta'), true)) {
+    if (empty($nonce) || !wp_verify_nonce($nonce, 'admin_login_sso_bypass_' . $action)) {
+        wp_die(__('Security check failed. Please go back and try again.', 'admin-login-sso'), __('Forbidden', 'admin-login-sso'), array('response' => 403));
+    }
+}
 
 ?>
 <!DOCTYPE html>
@@ -107,8 +115,9 @@ $action = isset($_GET['action']) ? sanitize_text_field($_GET['action']) : '';
                 update_option('admin_login_sso_emergency_bypass', time() + 3600); // 1 hour bypass
                 echo '<div class="success">SSO temporarily disabled for 1 hour. You can now access wp-admin normally.</div>';
             } else {
+                $confirm_url = wp_nonce_url('?action=disable_plugin&confirm=1', 'admin_login_sso_bypass_disable_plugin', '_wpnonce');
                 echo '<div class="warning">This will temporarily disable Google SSO for 1 hour.</div>';
-                echo '<p><a href="?action=disable_plugin&confirm=1" class="button">Confirm - Disable SSO for 1 hour</a></p>';
+                echo '<p><a href="' . esc_url($confirm_url) . '" class="button">Confirm - Disable SSO for 1 hour</a></p>';
             }
             break;
             
@@ -126,8 +135,9 @@ $action = isset($_GET['action']) ? sanitize_text_field($_GET['action']) : '';
                 }
                 echo '<div class="success">Cleared authentication meta for ' . $count . ' users.</div>';
             } else {
+                $confirm_url = wp_nonce_url('?action=clear_auth_meta&confirm=1', 'admin_login_sso_bypass_clear_auth_meta', '_wpnonce');
                 echo '<div class="warning">This will clear Google authentication status for all users.</div>';
-                echo '<p><a href="?action=clear_auth_meta&confirm=1" class="button">Confirm - Clear All Auth Meta</a></p>';
+                echo '<p><a href="' . esc_url($confirm_url) . '" class="button">Confirm - Clear All Auth Meta</a></p>';
             }
             break;
             
