@@ -1,0 +1,30 @@
+/**
+ * Admin Login SSO admin styles
+ */
+
+.admin-login-sso-instructions {
+    background: #fff;
+    border-left: 4px solid #2271b1;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+    margin: 20px 0;
+    padding: 1px 12px;
+}
+
+.admin-login-sso-instructions h3 {
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+}
+
+.admin-login-sso-instructions ol {
+    margin-left: 1.5em;
+    padding-left: 0;
+}
+
+.admin-login-sso-instructions li {
+    margin-bottom: 0.5em;
+}
+
+.form-table th {
+    width: 200px;
+    padding: 15px 10px 15px 0;
+}
