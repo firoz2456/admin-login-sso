@@ -64,21 +64,8 @@ class Admin_Login_SSO_User {
      * @return WP_User|WP_Error WP_User on success, WP_Error on failure
      */
     private function authenticate_existing_user($user, $user_info) {
-        // Check if user has admin capabilities
-        if (!$this->user_can_access_admin($user)) {
-            $roles_display = implode(', ', array_map(function($role) {
-                return translate_user_role($role);
-            }, $user->roles));
-            
-            return new WP_Error(
-                'insufficient_permissions',
-                sprintf(
-                    __('Authentication failed: Your WordPress user account (%1$s) with roles [%2$s] does not have sufficient permissions to access the admin area. This plugin restricts access to users with administrative capabilities only. Please contact your site administrator for assistance.', 'admin-login-sso'),
-                    esc_html($user->user_login),
-                    esc_html($roles_display)
-                )
-            );
-        }
+        // Domain validation is already done before this method is called.
+        // Any user with a valid allowed domain can log in.
 
         // Log the user in
         wp_set_current_user($user->ID);
