@@ -45,9 +45,9 @@ class Admin_Login_SSO_Auth
     const GOOGLE_REVOKE_URL = 'https://accounts.google.com/o/oauth2/revoke';
 
     /**
-     * OAuth state transient expiration (5 minutes)
+     * OAuth state transient expiration (15 minutes)
      */
-    const STATE_EXPIRATION = 300;
+    const STATE_EXPIRATION = 900;
 
     /**
      * Rate limit: max OAuth callback attempts per IP within the window
@@ -226,11 +226,29 @@ class Admin_Login_SSO_Auth
     /**
      * Get redirect URI
      *
+     * Uses a stored redirect URI if available, otherwise builds from site_url()
+     * and forces HTTPS. This prevents redirect_uri_mismatch errors caused by
+     * site_url() returning inconsistent schemes behind reverse proxies or CDNs.
+     *
      * @return string Redirect URI
      */
     private function get_redirect_uri()
     {
-        return site_url('wp-login.php?action=admin_login_sso_callback');
+        // Allow explicit override via option (set on settings page)
+        $stored_uri = get_option('admin_login_sso_redirect_uri', '');
+        if (!empty($stored_uri)) {
+            return $stored_uri;
+        }
+
+        // Build from site_url and force HTTPS to prevent scheme mismatch
+        $uri = site_url('wp-login.php?action=admin_login_sso_callback');
+
+        // Force HTTPS if the site is served over SSL (even behind a proxy)
+        if (is_ssl() || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && 'https' === $_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+            $uri = preg_replace('/^http:/', 'https:', $uri);
+        }
+
+        return $uri;
     }
 
     /**
@@ -257,7 +275,9 @@ class Admin_Login_SSO_Auth
         }
 
         // Verify state parameter to prevent CSRF
-        $state = isset($_GET['state']) ? sanitize_key($_GET['state']) : '';
+        // Note: sanitize_text_field (not sanitize_key) to preserve case, since
+        // wp_generate_password produces mixed-case and sanitize_key lowercases everything
+        $state = isset($_GET['state']) ? sanitize_text_field($_GET['state']) : '';
         if (empty($state) || !get_transient('admin_login_sso_state_' . $state)) {
             $this->handle_error('invalid_state', __('Invalid state parameter. Please try again.', 'admin-login-sso'));
             return;
@@ -757,6 +777,16 @@ class Admin_Login_SSO_Auth
         return $is_admin;
     }
 
+
+    /**
+     * Get redirect URI for display in admin settings
+     *
+     * @return string Redirect URI
+     */
+    public function get_redirect_uri_display(): string
+    {
+        return $this->get_redirect_uri();
+    }
 
     /**
      * Get the client secret, preferring environment variable over wp_options

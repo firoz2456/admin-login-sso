@@ -4,7 +4,7 @@ Tags: google, login, sso, oauth, security, admin
 Requires at least: 6.4
 Tested up to: 6.4
 Requires PHP: 8.0
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -74,6 +74,10 @@ If the classic login form is enabled in the settings, users can sign in using th
 
 == Changelog ==
 
+= 1.1.1 =
+* Fix: Resolve intermittent "Invalid state parameter" errors caused by sanitize_key lowercasing state tokens
+* Fix: Increase OAuth state expiration from 5 to 15 minutes to prevent timeout on slow logins
+
 = 1.1.0 =
 * Security: Add nonce verification to emergency bypass actions
 * Security: Add per-IP rate limiting on OAuth callback (10 attempts/15min)
@@ -86,6 +90,9 @@ If the classic login form is enabled in the settings, users can sign in using th
 * Initial release
 
 == Upgrade Notice ==
+
+= 1.1.1 =
+Fix intermittent "Invalid state parameter" errors on login.
 
 = 1.1.0 =
 Security hardening, redirect URI stability fix, and relaxed role restrictions.
