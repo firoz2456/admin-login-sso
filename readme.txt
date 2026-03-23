@@ -4,7 +4,7 @@ Tags: google, login, sso, oauth, security, admin
 Requires at least: 6.4
 Tested up to: 6.4
 Requires PHP: 8.0
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -74,10 +74,21 @@ If the classic login form is enabled in the settings, users can sign in using th
 
 == Changelog ==
 
+= 1.1.0 =
+* Security: Add nonce verification to emergency bypass actions
+* Security: Add per-IP rate limiting on OAuth callback (10 attempts/15min)
+* Security: Encrypt access tokens stored in user meta (AES-256-CBC)
+* Security: Support client secret via environment variable or constant
+* Fix: Resolve intermittent redirect_uri_mismatch errors behind proxies/CDN
+* Change: Allow any user with valid email domain to login (removed admin-only restriction)
+
 = 1.0.0 =
 * Initial release
 
 == Upgrade Notice ==
+
+= 1.1.0 =
+Security hardening, redirect URI stability fix, and relaxed role restrictions.
 
 = 1.0.0 =
 Initial release

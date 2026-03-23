@@ -4,7 +4,7 @@ declare(strict_types=1);
  * Plugin Name: Admin Login SSO
  * Plugin URI: https://wordpress.org/plugins/admin-login-sso/
  * Description: Replace WordPress admin login with Google OAuth2 authentication, restricting access to specific email domains.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: Firoz
  * Author URI: https://wordpress.org/plugins/admin-login-sso/
  * Text Domain: admin-login-sso
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('ADMIN_LOGIN_SSO_VERSION', '1.0.0');
+define('ADMIN_LOGIN_SSO_VERSION', '1.1.0');
 define('ADMIN_LOGIN_SSO_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ADMIN_LOGIN_SSO_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('ADMIN_LOGIN_SSO_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -65,6 +65,11 @@ function admin_login_sso_activate() {
         add_option('admin_login_sso_show_classic_login', '1', '', 'no');
     }
     
+    // Store the redirect URI on activation so it stays consistent
+    if (!get_option('admin_login_sso_redirect_uri')) {
+        add_option('admin_login_sso_redirect_uri', site_url('wp-login.php?action=admin_login_sso_callback'), '', 'no');
+    }
+
     // Set a transient to show activation notice
     set_transient('admin_login_sso_activated', true, 60);
     
