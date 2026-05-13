@@ -5,10 +5,12 @@ A WordPress plugin that replaces the traditional admin login with Google OAuth2 
 ## Features
 
 - **Google OAuth2 Integration**: Add a "Sign in with Google" flow on your admin login page.
-- **Domain-Based Access Control**: Validate email addresses and allow login only when the email's domain matches an entry in your allowed domains list.
-- **User Matching & Provisioning**: Match existing WordPress users by email or optionally create new admin users.
-- **Secure Token Handling**: Properly manage OAuth tokens and revoke them on logout.
-- **Easy Setup**: Simple configuration through the WordPress admin interface.
+- **Domain-Based Access Control**: Validate email addresses (with wildcard subdomain support) and allow login only when the email's domain matches an entry in your allowed domains list. Requires Google to have marked the email as verified.
+- **User Matching & Provisioning**: Match existing WordPress users by email or optionally auto-create new administrator accounts.
+- **WAF-Safe Secret Save**: The Client Secret saves via a dedicated AJAX channel with a base64-encoded, neutrally-named payload — Cloudflare / Sucuri / Wordfence don't see a `GOCSPX-` value crossing `wp-admin/options.php`.
+- **External Secret Management**: Define `ADMIN_LOGIN_SSO_CLIENT_SECRET` as an env var or PHP constant to keep the secret out of the database entirely. The settings UI detects this and switches to a read-only "Managed externally" notice.
+- **Secure Token Handling**: AES-256-CBC encryption of stored access tokens, derived from `AUTH_KEY`. Fails closed (refuses to persist) if OpenSSL or `AUTH_KEY` is unavailable.
+- **Easy Setup**: Quick setup guide card, in-page "Test Google sign-in" button, contextual Help tab, and a parsed-domains chip preview for sanity-checking the allowed list.
 
 ## Requirements
 
