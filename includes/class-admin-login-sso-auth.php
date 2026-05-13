@@ -319,6 +319,11 @@ class Admin_Login_SSO_Auth
             return;
         }
 
+        // Carry the access token through to user provisioning so it can be encrypted
+        // and persisted for logout-time revocation. The userinfo endpoint does not
+        // return the access_token field, so we inject it from the token exchange.
+        $user_info['access_token'] = $token_data['access_token'];
+
         // Process user login or creation
         $user = $this->process_user_login($user_info);
         if (is_wp_error($user)) {
