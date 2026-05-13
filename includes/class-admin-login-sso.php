@@ -89,16 +89,12 @@ class Admin_Login_SSO {
             )
         );
 
-        register_setting(
-            'admin_login_sso_settings',
-            'admin_login_sso_client_secret',
-            array(
-                'type' => 'string',
-                'description' => __('Google Client Secret', 'admin-login-sso'),
-                'sanitize_callback' => array($this, 'sanitize_client_secret'),
-                'default' => '',
-            )
-        );
+        // NOTE: admin_login_sso_client_secret is NOT registered with the Settings API.
+        // It is saved via a dedicated AJAX endpoint (see Admin_Login_SSO_Admin::ajax_save_secret)
+        // so that the secret value (which starts with "GOCSPX-" and matches WAF secret-leak
+        // signatures) never travels through the standard wp-admin/options.php POST body on
+        // routine settings saves. The sanitize_client_secret() method below is still used —
+        // the AJAX handler invokes it directly.
 
         register_setting(
             'admin_login_sso_settings',

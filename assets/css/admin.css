@@ -1,30 +1,298 @@
 /**
- * Admin Login SSO admin styles
+ * Admin Login SSO — settings page styles.
+ *
+ * Built on top of WP admin tokens (--wp-admin-theme-color, native .notice,
+ * Dashicons) so the page reads as a first-party WP screen.
  */
 
-.admin-login-sso-instructions {
-    background: #fff;
-    border-left: 4px solid #2271b1;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
-    margin: 20px 0;
-    padding: 1px 12px;
+/* ---------- Layout ---------- */
+
+.als-wrap .als-form {
+	max-width: 960px;
 }
 
-.admin-login-sso-instructions h3 {
-    margin-top: 1em;
-    margin-bottom: 0.5em;
+.als-card {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+	margin: 16px 0 24px;
+	padding: 20px 24px;
 }
 
-.admin-login-sso-instructions ol {
-    margin-left: 1.5em;
-    padding-left: 0;
+.als-card__title {
+	align-items: center;
+	display: flex;
+	font-size: 1.15em;
+	gap: 8px;
+	margin: 0 0 6px;
 }
 
-.admin-login-sso-instructions li {
-    margin-bottom: 0.5em;
+.als-card__title .dashicons {
+	color: var(--wp-admin-theme-color, #2271b1);
 }
 
-.form-table th {
-    width: 200px;
-    padding: 15px 10px 15px 0;
+.als-card__intro {
+	color: #50575e;
+	margin: 0 0 16px;
+}
+
+.als-card--help {
+	background: #f6f7f7;
+}
+
+.als-card--help .als-steps {
+	margin: 6px 0 12px 22px;
+}
+
+.als-card--help .als-steps li {
+	margin-bottom: 6px;
+}
+
+/* ---------- Status banner (top of page) ---------- */
+
+.als-status-banner {
+	border-radius: 4px;
+	margin: 12px 0 20px;
+	padding: 14px 18px;
+}
+
+.als-status-banner__heading {
+	align-items: center;
+	display: flex;
+	font-size: 1em;
+	gap: 8px;
+	margin: 0 0 4px;
+}
+
+.als-status-banner__heading .dashicons {
+	font-size: 20px;
+	height: 20px;
+	width: 20px;
+}
+
+.als-status-banner__body {
+	color: #50575e;
+	margin: 0;
+}
+
+/* ---------- Redirect URI row ---------- */
+
+.als-redirect {
+	background: #f0f6fc;
+	border: 1px solid #c5d9ed;
+	border-radius: 4px;
+	margin-bottom: 18px;
+	padding: 12px 14px;
+}
+
+.als-redirect__label {
+	align-items: baseline;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 12px;
+	margin-bottom: 6px;
+}
+
+.als-redirect__hint {
+	color: #50575e;
+	font-weight: normal;
+}
+
+.als-redirect__row {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.als-redirect__value {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	display: inline-block;
+	flex: 1 1 320px;
+	font-family: Consolas, Monaco, monospace;
+	overflow-x: auto;
+	padding: 6px 10px;
+	user-select: all;
+	white-space: nowrap;
+}
+
+/* ---------- Master toggle ---------- */
+
+.als-toggle {
+	align-items: center;
+	cursor: pointer;
+	display: inline-flex;
+	gap: 8px;
+}
+
+.als-toggle__label {
+	font-weight: 600;
+}
+
+/* ---------- Secret section ---------- */
+
+.als-secret {
+	margin: 0;
+}
+
+.als-secret[aria-busy="true"] {
+	opacity: 0.6;
+	pointer-events: none;
+}
+
+.als-secret__saved {
+	margin-bottom: 8px;
+}
+
+.als-secret__display {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin: 0 0 10px;
+}
+
+.als-secret__badge {
+	align-items: center;
+	background: #edfaef;
+	border: 1px solid #b8e0c2;
+	border-radius: 12px;
+	color: #0a6b1f;
+	display: inline-flex;
+	font-size: 12px;
+	font-weight: 600;
+	gap: 4px;
+	padding: 3px 10px 3px 8px;
+	text-transform: uppercase;
+}
+
+.als-secret__badge .dashicons {
+	color: #0a6b1f;
+	font-size: 16px;
+	height: 16px;
+	width: 16px;
+}
+
+.als-secret__mask {
+	background: #f0f0f1;
+	border: 1px solid #dcdcde;
+	display: inline-block;
+	font-family: Consolas, Monaco, monospace;
+	padding: 4px 10px;
+}
+
+.als-secret__mask:focus {
+	box-shadow: 0 0 0 2px var(--wp-admin-theme-color, #2271b1);
+	outline: none;
+}
+
+.als-secret__clear {
+	color: #b32d2e;
+}
+
+.als-feedback {
+	margin-top: 10px;
+}
+
+.als-feedback[data-kind="success"] {
+	background: #edfaef;
+	border: 1px solid #b8e0c2;
+	border-radius: 3px;
+	color: #0a6b1f;
+	padding: 8px 12px;
+}
+
+.als-feedback[data-kind="error"] {
+	background: #fcf0f1;
+	border: 1px solid #f1b1b4;
+	border-radius: 3px;
+	color: #8a1f11;
+	padding: 8px 12px;
+}
+
+.als-feedback[data-kind="info"] {
+	background: #f0f6fc;
+	border: 1px solid #c5d9ed;
+	border-radius: 3px;
+	color: #0a4b78;
+	padding: 8px 12px;
+}
+
+/* ---------- Field feedback (validate format) ---------- */
+
+.als-field-feedback {
+	margin: 6px 0 0;
+}
+
+.als-field-feedback[data-kind="success"] {
+	color: #0a6b1f;
+}
+
+.als-field-feedback[data-kind="warning"] {
+	color: #8a6700;
+}
+
+.als-field-feedback[data-kind="error"] {
+	color: #8a1f11;
+}
+
+.als-field-feedback .dashicons {
+	font-size: 16px;
+	height: 16px;
+	margin-right: 2px;
+	vertical-align: text-bottom;
+	width: 16px;
+}
+
+/* ---------- Domain chip preview ---------- */
+
+.als-chip-preview {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 8px;
+	min-height: 0;
+}
+
+.als-chip-preview:not(:empty) {
+	margin-top: 10px;
+}
+
+.als-chip {
+	background: #f0f0f1;
+	border: 1px solid #dcdcde;
+	border-radius: 12px;
+	color: #1d2327;
+	display: inline-flex;
+	font-family: Consolas, Monaco, monospace;
+	font-size: 12px;
+	padding: 3px 10px;
+}
+
+.als-chip--wildcard {
+	background: #f0f6fc;
+	border-color: #c5d9ed;
+	color: #0a4b78;
+}
+
+.als-chip--invalid {
+	background: #fcf0f1;
+	border-color: #f1b1b4;
+	color: #8a1f11;
+}
+
+/* ---------- Copy toast ---------- */
+
+.als-copy-toast {
+	color: #0a6b1f;
+	font-size: 12px;
+	margin-left: 6px;
+	opacity: 0;
+	transition: opacity 0.15s ease-out;
+}
+
+.als-copy-toast[data-visible="true"] {
+	opacity: 1;
 }
