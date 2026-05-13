@@ -200,8 +200,13 @@ class Admin_Login_SSO {
                 continue;
             }
             
-            // Allow wildcards in domains, e.g., *.example.com
-            if (preg_match('/^(\*\.)?([\w-]+\.)+[\w-]{2,}$/', $domain) || filter_var($domain, FILTER_VALIDATE_DOMAIN)) {
+            // Allow wildcards in domains, e.g., *.example.com.
+            // Hostname labels: 1-63 chars, alphanumeric, may contain hyphens but
+            // not at start or end. TLD requires at least 2 letters. Underscores
+            // (allowed by \w) are intentionally rejected per RFC 952/1035.
+            $hostname_re = '/^(\*\.)?([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i';
+            $bare = (0 === strpos($domain, '*.')) ? substr($domain, 2) : $domain;
+            if (preg_match($hostname_re, $domain) || filter_var($bare, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
                 $sanitized_domains[] = $domain;
             } else {
                 $invalid_domains[] = $domain;
