@@ -49,6 +49,29 @@
 	margin-bottom: 6px;
 }
 
+.als-substeps {
+	list-style: disc;
+	margin: 4px 0 4px 20px;
+}
+
+.als-substeps li {
+	margin-bottom: 3px;
+}
+
+.als-warning {
+	background: #fcf9e8;
+	border-left: 3px solid #dba617;
+	margin-top: 8px;
+	padding: 8px 12px;
+}
+
+.als-warning code {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	font-size: 12px;
+	padding: 1px 6px;
+}
+
 /* ---------- Status banner (top of page) ---------- */
 
 .als-status-banner {

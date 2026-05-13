@@ -62,9 +62,11 @@ class Admin_Login_SSO_Admin {
             'id'      => 'als-help-troubleshooting',
             'title'   => __('Troubleshooting', 'admin-login-sso'),
             'content' =>
-                '<p><strong>' . esc_html__('"redirect_uri_mismatch"', 'admin-login-sso') . '</strong> — ' . esc_html__('The Redirect URI in this plugin does not match what is registered in Google Cloud Console. Copy the URI from the Connect to Google card exactly.', 'admin-login-sso') . '</p>' .
+                '<p><strong>' . esc_html__('"redirect_uri_mismatch"', 'admin-login-sso') . '</strong> — ' . esc_html__('The Redirect URI in this plugin does not match what is registered in Google Cloud Console. Copy the URI from the Connect to Google card exactly — http vs https, trailing slashes, and case all matter.', 'admin-login-sso') . '</p>' .
                 '<p><strong>' . esc_html__('"The link you followed has expired"', 'admin-login-sso') . '</strong> — ' . esc_html__('Your WAF/Cloudflare is stripping the Settings POST body. This plugin already saves the Client Secret via a WAF-safe AJAX channel; routine settings saves no longer contain the secret.', 'admin-login-sso') . '</p>' .
-                '<p><strong>' . esc_html__('Locked out?', 'admin-login-sso') . '</strong> — ' . esc_html__('Disable SSO via WP-CLI: wp option update admin_login_sso_enabled 0', 'admin-login-sso') . '</p>',
+                '<p><strong>' . esc_html__('Locked out?', 'admin-login-sso') . '</strong> — ' . esc_html__('Disable SSO via WP-CLI: wp option update admin_login_sso_enabled 0', 'admin-login-sso') . '</p>' .
+                '<p><strong>' . esc_html__('User signed in but has the wrong role', 'admin-login-sso') . '</strong> — ' . esc_html__('Roles are not changed for existing WordPress users — whatever role they already had is kept. Auto-create only applies the first time a Google account signs in.', 'admin-login-sso') . '</p>' .
+                '<p><strong>' . esc_html__('How long does a Google session last?', 'admin-login-sso') . '</strong> — ' . esc_html__('Once signed in, the user gets a standard WordPress auth cookie. Sessions last as long as that cookie (default 48 hours, 14 days with "Remember Me") regardless of whether the user is still signed into Google.', 'admin-login-sso') . '</p>',
         ));
 
         $screen->set_help_sidebar(
@@ -241,7 +243,7 @@ class Admin_Login_SSO_Admin {
             data-action="domain-preview"
         ><?php echo esc_textarea($allowed_domains); ?></textarea>
         <p class="description">
-            <?php esc_html_e('Comma-separated. Wildcard subdomains supported (e.g. *.example.org matches sub.example.org).', 'admin-login-sso'); ?>
+            <?php esc_html_e('Comma-separated. Use *.example.org to allow the base domain and all its subdomains. Matching is case-insensitive. If the list is empty, no one can sign in via Google.', 'admin-login-sso'); ?>
         </p>
         <div class="als-chip-preview" data-chip-preview-for="admin_login_sso_allowed_domains" aria-live="polite"></div>
         <?php
@@ -260,7 +262,18 @@ class Admin_Login_SSO_Admin {
             <span class="als-toggle__label"><?php esc_html_e('Enable Google-only admin login', 'admin-login-sso'); ?></span>
         </label>
         <p class="description">
-            <?php esc_html_e('When enabled, all wp-admin access requires successful Google authentication with an allowed email domain.', 'admin-login-sso'); ?>
+            <?php esc_html_e('When enabled, all wp-admin sign-ins require Google sign-in with an allowed email domain.', 'admin-login-sso'); ?>
+        </p>
+        <p class="description als-warning">
+            <strong><?php esc_html_e('Test before enabling.', 'admin-login-sso'); ?></strong>
+            <?php
+            printf(
+                /* translators: %s: the label of the Test Google sign-in button. */
+                esc_html__('Use %s in the Quick setup guide first — if Google credentials are misconfigured you can lock yourself out. Recover via WP-CLI:', 'admin-login-sso'),
+                '<strong>' . esc_html__('Test Google sign-in', 'admin-login-sso') . '</strong>'
+            );
+            ?>
+            <code>wp option update admin_login_sso_enabled 0</code>
         </p>
         <?php
     }
@@ -282,7 +295,7 @@ class Admin_Login_SSO_Admin {
             ?>
         </label>
         <p class="description">
-            <?php esc_html_e('Recommended only if every person on your allowed domain should have full admin access. Otherwise, leave off and create user accounts manually.', 'admin-login-sso'); ?>
+            <?php esc_html_e('Recommended only if every person on your allowed domain should have full admin access. When off, only existing WordPress users (matched by email) can sign in — new Google accounts are rejected.', 'admin-login-sso'); ?>
         </p>
         <?php
     }
@@ -298,7 +311,7 @@ class Admin_Login_SSO_Admin {
             <?php esc_html_e('Also show the username/password form on the login page', 'admin-login-sso'); ?>
         </label>
         <p class="description">
-            <?php esc_html_e('Recommended. Leave on so you can still sign in with a password if Google is unreachable or credentials are misconfigured.', 'admin-login-sso'); ?>
+            <?php esc_html_e('Recommended as a fallback. If you turn this off and Google sign-in breaks, you will need to recover via WP-CLI or by editing wp_options directly.', 'admin-login-sso'); ?>
         </p>
         <?php
     }
@@ -323,12 +336,16 @@ class Admin_Login_SSO_Admin {
         // Surface a one-shot AJAX success/failure notice (set by ajax_save_secret/ajax_clear_secret).
         $this->surface_ajax_flash();
 
+        $state = $this->compute_status_state();
+        $guide_at_top = in_array($state, array('not-configured', 'enabled-incomplete'), true);
         ?>
         <div class="wrap als-wrap">
             <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
 
             <?php $this->render_status_banner(); ?>
             <?php settings_errors('admin_login_sso_messages'); ?>
+
+            <?php if ($guide_at_top) { $this->render_quick_setup_card(); } ?>
 
             <form action="options.php" method="post" class="als-form">
                 <?php settings_fields('admin_login_sso_settings'); ?>
@@ -339,7 +356,12 @@ class Admin_Login_SSO_Admin {
                         <?php esc_html_e('Connect to Google', 'admin-login-sso'); ?>
                     </h2>
                     <p class="als-card__intro">
-                        <?php esc_html_e('Create an OAuth 2.0 Client ID in Google Cloud Console, then paste the credentials below.', 'admin-login-sso'); ?>
+                        <?php
+                        echo wp_kses(
+                            __('Paste your Google OAuth credentials below to let users sign in with their Google account. New to OAuth? Follow the <a href="#als-card-help">Quick setup guide</a>.', 'admin-login-sso'),
+                            array('a' => array('href' => array()))
+                        );
+                        ?>
                     </p>
 
                     <?php $this->render_redirect_uri_row(); ?>
@@ -396,7 +418,7 @@ class Admin_Login_SSO_Admin {
                 <?php submit_button(__('Save changes', 'admin-login-sso')); ?>
             </form>
 
-            <?php $this->render_quick_setup_card(); ?>
+            <?php if (!$guide_at_top) { $this->render_quick_setup_card(); } ?>
         </div>
         <?php
     }
@@ -449,22 +471,22 @@ class Admin_Login_SSO_Admin {
             case 'enabled-incomplete':
                 $class = 'notice notice-error';
                 $icon = 'dashicons-warning';
-                $heading = __('SSO is enabled but configuration is incomplete', 'admin-login-sso');
+                $heading = __('SSO is enabled but required settings are missing', 'admin-login-sso');
                 /* translators: %s: comma-separated list of missing fields. */
-                $body = sprintf(__('Missing: %s. Users may be locked out until this is fixed.', 'admin-login-sso'), implode(', ', $missing));
+                $body = sprintf(__('Missing: %s. New sign-ins to wp-admin will fail until this is fixed. Existing logged-in sessions remain valid. Recover via WP-CLI: wp option update admin_login_sso_enabled 0', 'admin-login-sso'), implode(', ', $missing));
                 break;
             case 'configured-disabled':
                 $class = 'notice notice-warning';
                 $icon = 'dashicons-flag';
                 $heading = __('SSO is configured but not enabled', 'admin-login-sso');
-                $body = __('Standard WordPress login is being used. Flip the master switch in the "Login behavior" section to turn SSO on.', 'admin-login-sso');
+                $body = __('Standard WordPress login is being used. Turn on the SSO master switch in the Login behavior section to activate Google sign-in.', 'admin-login-sso');
                 break;
             case 'enabled':
             default:
                 $class = 'notice notice-success';
                 $icon = 'dashicons-yes-alt';
                 $heading = __('SSO is active', 'admin-login-sso');
-                $body = __('All wp-admin sign-ins require Google authentication with an allowed email domain.', 'admin-login-sso');
+                $body = __('All wp-admin sign-ins require Google sign-in with an allowed email domain.', 'admin-login-sso');
                 break;
         }
         ?>
@@ -488,7 +510,9 @@ class Admin_Login_SSO_Admin {
         <div class="als-redirect">
             <div class="als-redirect__label">
                 <strong><?php esc_html_e('Redirect URI', 'admin-login-sso'); ?></strong>
-                <span class="als-redirect__hint"><?php esc_html_e('Paste this into Google Cloud Console → Authorized redirect URIs.', 'admin-login-sso'); ?></span>
+                <span class="als-redirect__hint">
+                    <?php esc_html_e('In Google Cloud Console, open your OAuth client and paste this into Authorized redirect URIs. The value must match exactly — http vs https, trailing slashes, and case all matter.', 'admin-login-sso'); ?>
+                </span>
             </div>
             <div class="als-redirect__row">
                 <code class="als-redirect__value" id="als-redirect-uri-value"><?php echo esc_html($redirect_uri); ?></code>
@@ -510,24 +534,43 @@ class Admin_Login_SSO_Admin {
         $client_id = (string) get_option('admin_login_sso_client_id', '');
         $client_secret = (string) get_option('admin_login_sso_client_secret', '');
         $can_test = ('' !== $client_id && '' !== $client_secret);
+        $kses_a = array('a' => array('href' => array(), 'target' => array(), 'rel' => array()));
         ?>
         <section class="als-card als-card--help" aria-labelledby="als-card-help">
             <h2 id="als-card-help" class="als-card__title">
                 <span class="dashicons dashicons-sos" aria-hidden="true"></span>
                 <?php esc_html_e('Quick setup guide', 'admin-login-sso'); ?>
             </h2>
+            <p class="als-card__intro">
+                <?php esc_html_e('First-time setup takes about 5 minutes in Google Cloud Console.', 'admin-login-sso'); ?>
+            </p>
             <ol class="als-steps">
                 <li><?php
                     printf(
-                        /* translators: %s: link to Google Cloud Console. */
-                        wp_kses(__('Open <a href="%s" target="_blank" rel="noopener noreferrer">Google Cloud Console → Credentials</a>.', 'admin-login-sso'), array('a' => array('href' => array(), 'target' => array(), 'rel' => array()))),
-                        'https://console.cloud.google.com/apis/credentials'
+                        /* translators: %s: link to Google Cloud Console home. */
+                        wp_kses(__('In <a href="%s" target="_blank" rel="noopener noreferrer">Google Cloud Console</a>, select or create a project for this site.', 'admin-login-sso'), $kses_a),
+                        'https://console.cloud.google.com/'
                     );
                 ?></li>
-                <li><?php esc_html_e('Create an OAuth 2.0 Client ID (application type: Web application).', 'admin-login-sso'); ?></li>
-                <li><?php esc_html_e('Paste the Redirect URI from the Connect to Google card above into "Authorized redirect URIs".', 'admin-login-sso'); ?></li>
-                <li><?php esc_html_e('Copy the generated Client ID and Client Secret back here and save.', 'admin-login-sso'); ?></li>
-                <li><?php esc_html_e('Add your allowed email domains, then test before flipping the master switch.', 'admin-login-sso'); ?></li>
+                <li><?php
+                    echo wp_kses(__('Under <strong>APIs &amp; Services → OAuth consent screen</strong>, configure consent (User type, app name, support email). Required before you can create credentials.', 'admin-login-sso'), array('strong' => array()));
+                ?></li>
+                <li><?php
+                    echo wp_kses(__('Under <strong>APIs &amp; Services → Credentials</strong>, click <strong>Create credentials → OAuth client ID</strong>. Application type: <strong>Web application</strong>.', 'admin-login-sso'), array('strong' => array()));
+                ?></li>
+                <li><?php
+                    echo wp_kses(__('In <strong>Authorized redirect URIs</strong>, paste the Redirect URI from the Connect to Google card above (use the Copy button). It must match exactly — <code>http</code> vs <code>https</code>, trailing slashes, and case all matter. A mismatch causes <code>redirect_uri_mismatch</code> errors.', 'admin-login-sso'), array('strong' => array(), 'code' => array()));
+                ?></li>
+                <li><?php esc_html_e('After Google generates the credentials:', 'admin-login-sso'); ?>
+                    <ul class="als-substeps">
+                        <li><?php echo wp_kses(__('Paste the <strong>Client ID</strong> into the field above and click <strong>Save changes</strong>.', 'admin-login-sso'), array('strong' => array())); ?></li>
+                        <li><?php echo wp_kses(__('Paste the <strong>Client Secret</strong> into its field above and click <strong>Save secret</strong> (this is a separate save).', 'admin-login-sso'), array('strong' => array())); ?></li>
+                    </ul>
+                </li>
+                <li><?php echo wp_kses(__('In <strong>Access control</strong>, add your allowed email domains.', 'admin-login-sso'), array('strong' => array())); ?></li>
+                <li><?php
+                    echo wp_kses(__('Click <strong>Test Google sign-in</strong> below — you should see Google\'s sign-in screen and land back on <code>wp-login.php</code>. Only after a successful test, turn on the <strong>SSO master switch</strong> in Login behavior.', 'admin-login-sso'), array('strong' => array(), 'code' => array()));
+                ?></li>
             </ol>
             <?php if ($can_test) :
                 $auth = new Admin_Login_SSO_Auth();
@@ -537,7 +580,13 @@ class Admin_Login_SSO_Admin {
                     <a class="button button-secondary" href="<?php echo esc_url($test_url); ?>" target="_blank" rel="noopener noreferrer">
                         <?php esc_html_e('Test Google sign-in', 'admin-login-sso'); ?>
                     </a>
-                    <span class="description"><?php esc_html_e('Opens in a new tab. You should see Google sign-in and land back on wp-login.php.', 'admin-login-sso'); ?></span>
+                    <span class="description">
+                        <?php esc_html_e('Opens Google sign-in in a new tab using the credentials saved here. A successful test redirects you back to wp-login.php. If you see redirect_uri_mismatch, recheck step 4.', 'admin-login-sso'); ?>
+                    </span>
+                </p>
+            <?php else : ?>
+                <p class="description">
+                    <em><?php esc_html_e('Add a Client ID and Client Secret above to enable the Test Google sign-in button.', 'admin-login-sso'); ?></em>
                 </p>
             <?php endif; ?>
         </section>
@@ -653,7 +702,11 @@ class Admin_Login_SSO_Admin {
                         <button type="button" class="button" id="admin-login-sso-secret-cancel-btn" hidden><?php esc_html_e('Cancel', 'admin-login-sso'); ?></button>
                     </p>
                     <p class="description">
-                        <?php esc_html_e('Saved over a secure AJAX channel so the value is never transmitted through wp-admin/options.php.', 'admin-login-sso'); ?>
+                        <?php if ($has_secret) : ?>
+                            <?php esc_html_e('Saving replaces the current secret. Existing logged-in sessions remain valid until they expire.', 'admin-login-sso'); ?>
+                        <?php else : ?>
+                            <?php esc_html_e('Found in Google Cloud Console alongside your Client ID. The secret saves on its own (Save secret) — it is never sent through the main Save changes form.', 'admin-login-sso'); ?>
+                        <?php endif; ?>
                     </p>
                 </div>
 
