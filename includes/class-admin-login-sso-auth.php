@@ -310,6 +310,17 @@ class Admin_Login_SSO_Auth
             return;
         }
 
+        // Require Google to have verified the email. The userinfo endpoint exposes
+        // email_verified for consumer accounts; Workspace accounts always set it true.
+        // An unverified email could be self-asserted and bypass domain controls.
+        if (empty($user_info['email_verified'])) {
+            $this->handle_error(
+                'email_unverified',
+                __('Access Denied: Please contact the site admin.', 'admin-login-sso')
+            );
+            return;
+        }
+
         // Validate email domain
         if (!$this->validate_email_domain($user_info['email'])) {
             $this->handle_error(
