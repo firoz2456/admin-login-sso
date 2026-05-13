@@ -28,7 +28,7 @@ Severity classes: **CRITICAL / HIGH / MEDIUM / LOW / INFO**. CRITICAL and HIGH a
   1. `Admin_Login_SSO_Auth::handle_logout()` always finds the meta empty and never reaches the `GOOGLE_REVOKE_URL` call.
   2. The CHANGELOG / readme.txt claim "Properly manage OAuth tokens and revoke them on logout" is inaccurate.
 - **Recommendation:** Inject the token into the user_info array before passing it to `process_user()` (e.g., `$user_info['access_token'] = $token_data['access_token']; $user_info['expires_in'] = $token_data['expires_in'] ?? null;`), or change the User class to accept token data as a second parameter. Either way, add a unit test or guarded log so silent regressions are visible.
-- **Status:** [x] fixed in commit `b0e9e58`
+- **Status:** [x] fixed in commit `9519f0e`
 
 ---
 
@@ -38,7 +38,7 @@ Severity classes: **CRITICAL / HIGH / MEDIUM / LOW / INFO**. CRITICAL and HIGH a
 - **File:** `includes/class-admin-login-sso-user.php:234-238`
 - **Description:** `get_encryption_key()` returns `hash('sha256', AUTH_KEY . 'admin_login_sso_token_encryption', true)` — but the ternary `defined('AUTH_KEY') ? AUTH_KEY : 'admin-login-sso-default-key'` means a misconfigured install (or a future code path that runs before `wp-config.php` defines salts) derives the key from a *publicly known* literal in this source file. Anyone with read access to the file would be able to decrypt every stored token from a snapshot of `wp_usermeta`. The cost of getting it right is a one-line refusal.
 - **Recommendation:** Throw/return early if `AUTH_KEY` is not defined or is the WordPress placeholder `'put your unique phrase here'`. Have `encrypt_token` return an empty string in that case and log a `WP_DEBUG_LOG` error so the missing-salt condition is loud.
-- **Status:** [x] fixed in commit `2e0fa3d`
+- **Status:** [x] fixed in commit `197db4a`
 
 ---
 
@@ -48,7 +48,7 @@ Severity classes: **CRITICAL / HIGH / MEDIUM / LOW / INFO**. CRITICAL and HIGH a
 - **File:** `includes/class-admin-login-sso-user.php:198-204`, mirror at `:220-222`
 - **Description:** When `openssl_encrypt` is missing the function returns `base64_encode($token)`, which is **not** encryption — the value is trivially reversible by anyone reading the database. The matching `decrypt_token` path further compounds this: when `openssl_decrypt` is missing it returns `$data` raw, which would include the leading 16-byte IV from previously-encrypted entries and yield garbage for legitimate reads, but cleartext for entries written in the fallback path.
 - **Recommendation:** Refuse to store tokens when OpenSSL is unavailable. PHP 8.0+ ships OpenSSL on every distribution that targets WordPress 6.4, so this fallback is defending against a configuration that effectively does not exist; treating it as an error is correct.
-- **Status:** [x] fixed in commit `2e0fa3d`
+- **Status:** [x] fixed in commit `197db4a`
 
 ---
 
@@ -62,7 +62,7 @@ Severity classes: **CRITICAL / HIGH / MEDIUM / LOW / INFO**. CRITICAL and HIGH a
   - `render_secret_section()` shows the empty form (encouraging the user to overwrite the env value with a DB value).
   - `sanitize_checkbox()` refuses to enable SSO with "Cannot enable SSO: Please configure Google Client ID and Client Secret first."
 - **Recommendation:** Replace these `get_option()` calls with `Admin_Login_SSO_Auth::get_client_secret()`. For the `render_secret_section` case, also surface a "Secret is set via environment variable / constant" badge instead of the input form.
-- **Status:** [x] fixed in commit `3aae0c2`
+- **Status:** [x] fixed in commit `aea8856`
 
 ---
 
@@ -82,7 +82,7 @@ Severity classes: **CRITICAL / HIGH / MEDIUM / LOW / INFO**. CRITICAL and HIGH a
 - **File:** `includes/class-admin-login-sso.php:204`
 - **Description:** `filter_var($domain, FILTER_VALIDATE_DOMAIN)` without flags only checks that the string is a possible domain-as-a-DNS-name (length 1-253, no embedded whitespace). It accepts e.g. `--foo`, `_.com`, single labels, and empty subparts. Combined with the OR in the conditional, anything that fails the wildcard regex but is loosely "a string with a dot" will sneak into the allowed-domains list.
 - **Recommendation:** Pass `FILTER_FLAG_HOSTNAME` (RFC 952 hostname rules) and also tighten the wildcard regex to forbid `_` (use `[a-z0-9-]` instead of `\w`).
-- **Status:** [x] fixed in commit `9be0815`
+- **Status:** [x] fixed in commit `9932128`
 
 ---
 
@@ -92,7 +92,7 @@ Severity classes: **CRITICAL / HIGH / MEDIUM / LOW / INFO**. CRITICAL and HIGH a
 - **File:** `admin-login-sso.php:90, 95-97, 114-116`; `admin/class-admin-login-sso-admin.php:635, 638, 641, 645, 648, 652`
 - **Description:** `__()` returns the translated string un-escaped. Several places echo it directly inside HTML attributes or inline HTML (`'<a href="…">' . __('Settings', …) . '</a>'`, `_e('Admin Login SSO has been activated!', …)`). The practical risk is bounded — only admins see these strings and only an authorized translator could inject HTML — but the consistent convention used elsewhere in the codebase is `esc_html__`/`esc_html_e`, and these are deviations from that standard.
 - **Recommendation:** Replace `__` → `esc_html__` and `_e` → `esc_html_e` for these specific output sites. Leave `__` where the return value is still being passed to `printf`/`wp_kses` etc.
-- **Status:** [x] fixed in commit `5d2bf2e`
+- **Status:** [x] fixed in commit `954878a`
 
 ---
 
@@ -172,7 +172,7 @@ Severity classes: **CRITICAL / HIGH / MEDIUM / LOW / INFO**. CRITICAL and HIGH a
 - **File:** `includes/class-admin-login-sso.php:204`
 - **Description:** `'/^(\*\.)?([\w-]+\.)+[\w-]{2,}$/'` accepts `-bad.com` and `foo.-bad`. Hostnames may not start or end with a hyphen per RFC 952. Combined with Finding 6, the regex should be `'/^(\*\.)?([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i'` or similar.
 - **Recommendation:** Fold into Finding 6's fix.
-- **Status:** [x] fixed in commit `9be0815` (folded into Finding 6's fix)
+- **Status:** [x] fixed in commit `9932128` (folded into Finding 6's fix)
 
 ---
 
@@ -180,13 +180,13 @@ Severity classes: **CRITICAL / HIGH / MEDIUM / LOW / INFO**. CRITICAL and HIGH a
 
 | ID | Severity | Title | Status |
 |----|----------|-------|--------|
-| 1 | HIGH | Access token never persisted | fixed `b0e9e58` |
-| 2 | HIGH | Encryption key fallback constant | fixed `2e0fa3d` |
-| 3 | HIGH | base64 fallback for `encrypt_token` | fixed `2e0fa3d` |
-| 4 | MEDIUM | Status gates ignore env/constant secret | fixed `3aae0c2` |
+| 1 | HIGH | Access token never persisted | fixed `9519f0e` |
+| 2 | HIGH | Encryption key fallback constant | fixed `197db4a` |
+| 3 | HIGH | base64 fallback for `encrypt_token` | fixed `197db4a` |
+| 4 | MEDIUM | Status gates ignore env/constant secret | fixed `aea8856` |
 | 5 | LOW | Dead `sanitize_client_secret()` | open |
-| 6 | MEDIUM | `FILTER_VALIDATE_DOMAIN` missing flag | fixed `9be0815` |
-| 7 | MEDIUM | Unescaped translator strings | fixed `5d2bf2e` |
+| 6 | MEDIUM | `FILTER_VALIDATE_DOMAIN` missing flag | fixed `9932128` |
+| 7 | MEDIUM | Unescaped translator strings | fixed `954878a` |
 | 8 | LOW | Verbose PII logging | open |
 | 9 | MEDIUM | Page-level restriction bypass | open |
 | 10 | MEDIUM | Sticky `authenticated` meta after logout | open |
@@ -194,4 +194,4 @@ Severity classes: **CRITICAL / HIGH / MEDIUM / LOW / INFO**. CRITICAL and HIGH a
 | 12 | INFO | `is_admin_login` misnamed | open |
 | 13 | MEDIUM | Auto-create grants `administrator` | open |
 | 14 | LOW | Rate-limit sliding window | open |
-| 15 | LOW | Wildcard regex too permissive | fixed `9be0815` |
+| 15 | LOW | Wildcard regex too permissive | fixed `9932128` |

@@ -25,7 +25,7 @@ Severity classes: **CRITICAL / HIGH / MEDIUM / LOW / INFO**. Cross-references to
 - **Threat:** Database snapshot disclosure → cleartext OAuth tokens.
 - **Description:** `get_encryption_key()` derives the AES-256-CBC key from `AUTH_KEY`, but when that constant is undefined it falls back to the literal string `'admin-login-sso-default-key'` from this very source file. Any attacker who exfiltrates `wp_usermeta` and reads the public plugin source can decrypt all tokens stored under that key.
 - **Recommendation:** Refuse to encrypt when `AUTH_KEY` is undefined or equals the WP default placeholder. See `CODE-REVIEW.md` Finding 2.
-- **Status:** [x] fixed in commit `2e0fa3d`
+- **Status:** [x] fixed in commit `197db4a`
 
 ---
 
@@ -36,7 +36,7 @@ Severity classes: **CRITICAL / HIGH / MEDIUM / LOW / INFO**. Cross-references to
 - **Threat:** Trivial recovery of stored OAuth tokens on installs missing the openssl PHP extension.
 - **Description:** `if (!function_exists('openssl_encrypt')) { return base64_encode($token); }` silently degrades to no-op "encryption". Any future reviewer auditing `wp_usermeta` would see plausibly-encrypted blobs but they'd be readable with `base64 -d`. See `CODE-REVIEW.md` Finding 3 for context.
 - **Recommendation:** Return empty + log a `WP_DEBUG_LOG` error; do not store the token at all in this environment.
-- **Status:** [x] fixed in commit `2e0fa3d`
+- **Status:** [x] fixed in commit `197db4a`
 
 ---
 
@@ -128,7 +128,7 @@ Severity classes: **CRITICAL / HIGH / MEDIUM / LOW / INFO**. Cross-references to
 - **Observation (negative):** The sanitizer that decides which domains may be added to the allowed list uses `'/^(\*\.)?([\w-]+\.)+[\w-]{2,}$/'` with `FILTER_VALIDATE_DOMAIN` as a fallback (no `FILTER_FLAG_HOSTNAME`). It accepts `_.com`, `--evil.com`, and arbitrary single-label strings via the loose `filter_var` fallback. An admin who pastes a typo'd or attacker-suggested value won't get a clear rejection.
 - **IDN homoglyphs (positive):** Both endpoints lowercase the input. `is_email()` accepts only ASCII characters in the local-part/host. Punycode domains (`xn--…`) are treated as ordinary ASCII strings, so `xn--exmple-…` ≠ `example.com` — no homoglyph collapse occurs.
 - **Recommendation:** Tighten the sanitizer regex and pass `FILTER_FLAG_HOSTNAME`. See `CODE-REVIEW.md` Findings 6 and 15.
-- **Status:** [x] fixed in commit `9be0815`
+- **Status:** [x] fixed in commit `9932128`
 
 ---
 
@@ -148,7 +148,7 @@ Severity classes: **CRITICAL / HIGH / MEDIUM / LOW / INFO**. Cross-references to
 - **File:** `includes/class-admin-login-sso-auth.php:307-320`
 - **Threat:** Google's `userinfo` response includes `email_verified: bool`. For Workspace accounts on an org's domain this is always true, but for consumer `gmail.com` or third-party-Google-Sign-In where a user attaches a self-asserted recovery email, an unverified email could theoretically pass validation. The plugin currently accepts any email returned by Google without checking the verified flag.
 - **Recommendation:** Add `if (empty($user_info['email_verified']) || !$user_info['email_verified']) { handle_error(...); return; }` after the userinfo fetch and before domain validation.
-- **Status:** [x] fixed in commit `8c41f97`
+- **Status:** [x] fixed in commit `6996b10`
 
 ---
 
@@ -181,7 +181,7 @@ Severity classes: **CRITICAL / HIGH / MEDIUM / LOW / INFO**. Cross-references to
   - "Add per-IP rate limiting on OAuth callback (10 attempts/15min)" — true, but Finding S3 shows the IP detection is incorrect behind proxies.
   - "Allow any user with valid email domain to login (removed admin-only restriction)" — true for the *gating* step, but auto-create still hard-codes `administrator` (Finding S7).
 - **Recommendation:** Once Findings 1 and S3 are addressed, restate the security posture honestly in the 1.2.2 changelog. Until then, do not add new security-feature claims.
-- **Status:** [x] fixed in commit `f0a4271` (Finding 1 fix delivers the documented behavior; readme.txt updated to match)
+- **Status:** [x] fixed in commit `bbaa258` (Finding 1 fix delivers the documented behavior; readme.txt updated to match)
 
 ---
 
@@ -200,7 +200,7 @@ Severity classes: **CRITICAL / HIGH / MEDIUM / LOW / INFO**. Cross-references to
 - **Severity:** LOW
 - **File:** `admin-login-sso.php:90, 95-97, 114-116`, `admin/class-admin-login-sso-admin.php:635, 638, 641, 645, 648, 652`
 - **Threat:** Translator-controlled XSS in admin-only contexts. Practical risk is low (admin-only render path, translator trust model). See `CODE-REVIEW.md` Finding 7.
-- **Status:** [x] fixed in commit `5d2bf2e`
+- **Status:** [x] fixed in commit `954878a`
 
 ---
 
@@ -208,8 +208,8 @@ Severity classes: **CRITICAL / HIGH / MEDIUM / LOW / INFO**. Cross-references to
 
 | ID  | Severity | Title                                                       | Status               |
 |-----|----------|-------------------------------------------------------------|----------------------|
-| S1  | HIGH     | Encryption-key fallback constant                            | fixed `2e0fa3d`      |
-| S2  | HIGH     | base64 fallback for `encrypt_token`                         | fixed `2e0fa3d`      |
+| S1  | HIGH     | Encryption-key fallback constant                            | fixed `197db4a`      |
+| S2  | HIGH     | base64 fallback for `encrypt_token`                         | fixed `197db4a`      |
 | S3  | HIGH     | Rate limiter ignores proxy headers (lockout behind CDN)     | open                 |
 | S4  | INFO     | OAuth state CSRF — correct                                  | no action            |
 | S5  | INFO     | Client Secret save endpoint — correct                       | no action            |
@@ -217,11 +217,11 @@ Severity classes: **CRITICAL / HIGH / MEDIUM / LOW / INFO**. Cross-references to
 | S7  | HIGH     | Auto-created users get `administrator`                      | open (1.3 feature)   |
 | S8  | MEDIUM   | `plugins.php` / `options-general.php` exempt from SSO       | open                 |
 | S9  | MEDIUM   | Sticky `authenticated` meta after logout                    | open                 |
-| S10 | MEDIUM   | Sanitizer regex / `FILTER_VALIDATE_DOMAIN` flag             | fixed `9be0815`      |
+| S10 | MEDIUM   | Sanitizer regex / `FILTER_VALIDATE_DOMAIN` flag             | fixed `9932128`      |
 | S11 | LOW      | id_token not validated offline                              | open                 |
-| S12 | MEDIUM   | `email_verified` not enforced                               | fixed `8c41f97`      |
+| S12 | MEDIUM   | `email_verified` not enforced                               | fixed `6996b10`      |
 | S13 | LOW      | PII in `debug.log`                                          | open                 |
 | S14 | LOW      | REST restriction only covers `/wp/v2/`                      | open                 |
-| S15 | LOW      | readme.txt overstates posture                               | fixed `f0a4271`      |
+| S15 | LOW      | readme.txt overstates posture                               | fixed `bbaa258`      |
 | S16 | LOW      | Rate-limit sliding window                                   | open                 |
-| S17 | LOW      | Unescaped `__`/`_e` in admin notices                        | fixed `5d2bf2e`      |
+| S17 | LOW      | Unescaped `__`/`_e` in admin notices                        | fixed `954878a`      |
