@@ -196,10 +196,12 @@ class Admin_Login_SSO_Admin {
         echo '<div style="margin-bottom: 30px; padding: 20px; background: #e7f3ff; border: 1px solid #b3d9ff; border-radius: 5px;">';
         echo '<h3 style="margin-top: 0;">' . esc_html__('Quick Setup Guide', 'admin-login-sso') . '</h3>';
         
-        // Show the redirect URI
+        // Show the redirect URI (use stored value for consistency)
+        $auth = new Admin_Login_SSO_Auth();
+        $redirect_uri = esc_html($auth->get_redirect_uri_display());
         echo '<p><strong>' . esc_html__('Your Redirect URI:', 'admin-login-sso') . '</strong><br>';
-        echo '<code style="background: #fff; padding: 5px; border: 1px solid #ddd;">' . esc_html(site_url('wp-login.php?action=admin_login_sso_callback')) . '</code>';
-        echo ' <button type="button" class="button button-small" onclick="navigator.clipboard.writeText(\'' . esc_js(site_url('wp-login.php?action=admin_login_sso_callback')) . '\');">' . esc_html__('Copy', 'admin-login-sso') . '</button></p>';
+        echo '<code style="background: #fff; padding: 5px; border: 1px solid #ddd;">' . $redirect_uri . '</code>';
+        echo ' <button type="button" class="button button-small" onclick="navigator.clipboard.writeText(\'' . esc_js(strip_tags($redirect_uri)) . '\');">' . esc_html__('Copy', 'admin-login-sso') . '</button></p>';
         
         echo '<ol style="margin-left: 20px;">';
         echo '<li>' . esc_html__('Go to', 'admin-login-sso') . ' <a href="https://console.cloud.google.com/apis/credentials" target="_blank">' . esc_html__('Google Cloud Console', 'admin-login-sso') . '</a></li>';
