@@ -244,9 +244,11 @@ class Admin_Login_SSO {
     public function sanitize_checkbox($input) {
         // Special handling for the enabled checkbox
         if (current_filter() === 'sanitize_option_admin_login_sso_enabled' && !empty($input)) {
-            // Check if credentials are configured
+            // Check if credentials are configured. Read the secret through the
+            // same accessor the auth flow uses so an env-supplied secret is
+            // honored here too.
             $client_id = get_option('admin_login_sso_client_id');
-            $client_secret = get_option('admin_login_sso_client_secret');
+            $client_secret = Admin_Login_SSO_Auth::get_client_secret();
             $allowed_domains = get_option('admin_login_sso_allowed_domains');
             
             if (empty($client_id) || empty($client_secret)) {
