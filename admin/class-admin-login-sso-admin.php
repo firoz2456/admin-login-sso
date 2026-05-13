@@ -431,7 +431,10 @@ class Admin_Login_SSO_Admin {
     private function compute_status_state() {
         $enabled = (bool) get_option('admin_login_sso_enabled');
         $client_id = (string) get_option('admin_login_sso_client_id', '');
-        $client_secret = (string) get_option('admin_login_sso_client_secret', '');
+        // Read the secret through the same accessor the auth flow uses so that
+        // a value supplied via ADMIN_LOGIN_SSO_CLIENT_SECRET (env or constant)
+        // is reflected in the page state instead of being reported as missing.
+        $client_secret = Admin_Login_SSO_Auth::get_client_secret();
         $allowed_domains = (string) get_option('admin_login_sso_allowed_domains', '');
 
         $configured = ('' !== $client_id && '' !== $client_secret && '' !== $allowed_domains);
@@ -454,7 +457,7 @@ class Admin_Login_SSO_Admin {
     private function render_status_banner() {
         $state = $this->compute_status_state();
         $client_id = (string) get_option('admin_login_sso_client_id', '');
-        $client_secret = (string) get_option('admin_login_sso_client_secret', '');
+        $client_secret = Admin_Login_SSO_Auth::get_client_secret();
         $allowed_domains = (string) get_option('admin_login_sso_allowed_domains', '');
         $missing = array();
         if ('' === $client_id) { $missing[] = __('Client ID', 'admin-login-sso'); }
@@ -532,7 +535,7 @@ class Admin_Login_SSO_Admin {
      */
     private function render_quick_setup_card() {
         $client_id = (string) get_option('admin_login_sso_client_id', '');
-        $client_secret = (string) get_option('admin_login_sso_client_secret', '');
+        $client_secret = Admin_Login_SSO_Auth::get_client_secret();
         $can_test = ('' !== $client_id && '' !== $client_secret);
         $kses_a = array('a' => array('href' => array(), 'target' => array(), 'rel' => array()));
         ?>
@@ -626,30 +629,30 @@ class Admin_Login_SSO_Admin {
         
         // Check if plugin is configured
         $client_id = get_option('admin_login_sso_client_id');
-        $client_secret = get_option('admin_login_sso_client_secret');
+        $client_secret = Admin_Login_SSO_Auth::get_client_secret();
         $allowed_domains = get_option('admin_login_sso_allowed_domains');
         $enabled = get_option('admin_login_sso_enabled');
         
         ?>
         <div class="notice notice-info is-dismissible">
-            <p><strong><?php _e('Admin Login SSO has been activated!', 'admin-login-sso'); ?></strong></p>
-            
+            <p><strong><?php esc_html_e('Admin Login SSO has been activated!', 'admin-login-sso'); ?></strong></p>
+
             <?php if (empty($client_id) || empty($client_secret) || empty($allowed_domains)) : ?>
-                <p><?php _e('To get started, you need to configure the plugin with your Google OAuth2 credentials.', 'admin-login-sso'); ?></p>
+                <p><?php esc_html_e('To get started, you need to configure the plugin with your Google OAuth2 credentials.', 'admin-login-sso'); ?></p>
                 <p>
                     <a href="<?php echo esc_url(admin_url('options-general.php?page=admin-login-sso')); ?>" class="button button-primary">
-                        <?php _e('Configure Plugin Settings', 'admin-login-sso'); ?>
+                        <?php esc_html_e('Configure Plugin Settings', 'admin-login-sso'); ?>
                     </a>
                 </p>
             <?php elseif (!$enabled) : ?>
-                <p><?php _e('The plugin is configured but SSO is not enabled yet.', 'admin-login-sso'); ?></p>
+                <p><?php esc_html_e('The plugin is configured but SSO is not enabled yet.', 'admin-login-sso'); ?></p>
                 <p>
                     <a href="<?php echo esc_url(admin_url('options-general.php?page=admin-login-sso')); ?>" class="button button-primary">
-                        <?php _e('Enable SSO', 'admin-login-sso'); ?>
+                        <?php esc_html_e('Enable SSO', 'admin-login-sso'); ?>
                     </a>
                 </p>
             <?php else : ?>
-                <p><?php _e('SSO is enabled and ready to use. Make sure your email domain is in the allowed list before logging out.', 'admin-login-sso'); ?></p>
+                <p><?php esc_html_e('SSO is enabled and ready to use. Make sure your email domain is in the allowed list before logging out.', 'admin-login-sso'); ?></p>
             <?php endif; ?>
         </div>
         <?php
@@ -663,6 +666,37 @@ class Admin_Login_SSO_Admin {
      * via AJAX (see ajax_save_secret).
      */
     public function render_secret_section() {
+        // If the secret comes from the environment (env var or PHP constant), the
+        // DB option is irrelevant — render a read-only "managed externally" notice
+        // and skip the input form so admins don't accidentally shadow the env value
+        // with a DB value.
+        $env_secret = getenv('ADMIN_LOGIN_SSO_CLIENT_SECRET');
+        $const_set  = defined('ADMIN_LOGIN_SSO_CLIENT_SECRET') && !empty(ADMIN_LOGIN_SSO_CLIENT_SECRET);
+        if (!empty($env_secret) || $const_set) {
+            $source = !empty($env_secret) ? __('environment variable', 'admin-login-sso') : __('PHP constant', 'admin-login-sso');
+            ?>
+            <div class="als-secret als-secret--external">
+                <p>
+                    <span class="als-secret__badge">
+                        <span class="dashicons dashicons-lock" aria-hidden="true"></span>
+                        <?php esc_html_e('Managed externally', 'admin-login-sso'); ?>
+                    </span>
+                    <?php
+                    printf(
+                        /* translators: %s: source name (environment variable or PHP constant). */
+                        esc_html__('Client Secret is supplied via %s and is not stored in the database.', 'admin-login-sso'),
+                        '<code>ADMIN_LOGIN_SSO_CLIENT_SECRET</code> ' . esc_html($source)
+                    );
+                    ?>
+                </p>
+                <p class="description">
+                    <?php esc_html_e('To rotate the value, update the environment / wp-config.php and reload PHP. The fields below are disabled to prevent shadowing.', 'admin-login-sso'); ?>
+                </p>
+            </div>
+            <?php
+            return;
+        }
+
         $stored = (string) get_option('admin_login_sso_client_secret', '');
         $has_secret = ('' !== $stored);
         $masked = $has_secret ? $this->mask_secret($stored) : '';

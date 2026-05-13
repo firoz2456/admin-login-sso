@@ -200,8 +200,13 @@ class Admin_Login_SSO {
                 continue;
             }
             
-            // Allow wildcards in domains, e.g., *.example.com
-            if (preg_match('/^(\*\.)?([\w-]+\.)+[\w-]{2,}$/', $domain) || filter_var($domain, FILTER_VALIDATE_DOMAIN)) {
+            // Allow wildcards in domains, e.g., *.example.com.
+            // Hostname labels: 1-63 chars, alphanumeric, may contain hyphens but
+            // not at start or end. TLD requires at least 2 letters. Underscores
+            // (allowed by \w) are intentionally rejected per RFC 952/1035.
+            $hostname_re = '/^(\*\.)?([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i';
+            $bare = (0 === strpos($domain, '*.')) ? substr($domain, 2) : $domain;
+            if (preg_match($hostname_re, $domain) || filter_var($bare, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
                 $sanitized_domains[] = $domain;
             } else {
                 $invalid_domains[] = $domain;
@@ -244,9 +249,11 @@ class Admin_Login_SSO {
     public function sanitize_checkbox($input) {
         // Special handling for the enabled checkbox
         if (current_filter() === 'sanitize_option_admin_login_sso_enabled' && !empty($input)) {
-            // Check if credentials are configured
+            // Check if credentials are configured. Read the secret through the
+            // same accessor the auth flow uses so an env-supplied secret is
+            // honored here too.
             $client_id = get_option('admin_login_sso_client_id');
-            $client_secret = get_option('admin_login_sso_client_secret');
+            $client_secret = Admin_Login_SSO_Auth::get_client_secret();
             $allowed_domains = get_option('admin_login_sso_allowed_domains');
             
             if (empty($client_id) || empty($client_secret)) {

@@ -176,10 +176,14 @@ class Admin_Login_SSO_User {
         // Store authentication flag
         update_user_meta($user_id, 'admin_login_sso_authenticated', '1');
         
-        // Store access token encrypted if available
+        // Store access token encrypted if available. encrypt_token() returns ''
+        // when the environment can't provide real encryption (missing OpenSSL or
+        // unsalted install), in which case we deliberately do not persist the token.
         if (!empty($user_info['access_token'])) {
             $encrypted = self::encrypt_token($user_info['access_token']);
-            update_user_meta($user_id, 'admin_login_sso_access_token', $encrypted);
+            if ('' !== $encrypted) {
+                update_user_meta($user_id, 'admin_login_sso_access_token', $encrypted);
+            }
         }
         
         // Update login timestamp
@@ -187,53 +191,82 @@ class Admin_Login_SSO_User {
     }
 
     /**
-     * Encrypt a token for storage
+     * Encrypt a token for storage.
+     *
+     * Returns an empty string when the environment cannot provide real
+     * encryption (missing OpenSSL extension, or AUTH_KEY undefined / left as
+     * the WordPress placeholder). Callers should treat an empty return as
+     * "do not persist this token" rather than silently storing cleartext.
      *
      * @param string $token Plain text token
-     * @return string Base64-encoded encrypted token
+     * @return string Base64-encoded (IV || ciphertext), or '' if unavailable
      */
     public static function encrypt_token(string $token): string
     {
+        if ('' === $token) {
+            return '';
+        }
+        if (!function_exists('openssl_encrypt') || !function_exists('openssl_random_pseudo_bytes')) {
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[Admin Login SSO] Token not stored: OpenSSL extension unavailable.');
+            }
+            return '';
+        }
         $key = self::get_encryption_key();
-        if (!function_exists('openssl_encrypt')) {
-            // Fallback: use HMAC-based obfuscation if OpenSSL unavailable
-            return base64_encode($token);
+        if ('' === $key) {
+            return '';
         }
         $iv = openssl_random_pseudo_bytes(16);
         $encrypted = openssl_encrypt($token, 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv);
+        if (false === $encrypted) {
+            return '';
+        }
         return base64_encode($iv . $encrypted);
     }
 
     /**
-     * Decrypt a stored token
+     * Decrypt a stored token.
      *
-     * @param string $encrypted Base64-encoded encrypted token
+     * @param string $encrypted Base64-encoded (IV || ciphertext)
      * @return string|false Decrypted token or false on failure
      */
     public static function decrypt_token(string $encrypted)
     {
-        $key = self::get_encryption_key();
-        $data = base64_decode($encrypted, true);
-        if ($data === false || strlen($data) < 17) {
+        if ('' === $encrypted || !function_exists('openssl_decrypt')) {
             return false;
         }
-        if (!function_exists('openssl_decrypt')) {
-            return $data;
+        $key = self::get_encryption_key();
+        if ('' === $key) {
+            return false;
+        }
+        $data = base64_decode($encrypted, true);
+        if (false === $data || strlen($data) < 17) {
+            return false;
         }
         $iv = substr($data, 0, 16);
         $ciphertext = substr($data, 16);
         $decrypted = openssl_decrypt($ciphertext, 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv);
-        return $decrypted !== false ? $decrypted : false;
+        return false !== $decrypted ? $decrypted : false;
     }
 
     /**
-     * Get the encryption key derived from WordPress salts
+     * Derive the 32-byte encryption key from WordPress salts.
      *
-     * @return string 32-byte encryption key
+     * Refuses to use a hardcoded fallback: if AUTH_KEY is undefined or still
+     * the WordPress placeholder, returns '' so callers skip encryption rather
+     * than rely on a publicly-known key.
+     *
+     * @return string 32-byte raw key, or '' when no usable salt is available
      */
     private static function get_encryption_key(): string
     {
-        $salt = defined('AUTH_KEY') ? AUTH_KEY : 'admin-login-sso-default-key';
+        if (!defined('AUTH_KEY')) {
+            return '';
+        }
+        $salt = (string) AUTH_KEY;
+        if ('' === $salt || 'put your unique phrase here' === $salt) {
+            return '';
+        }
         return hash('sha256', $salt . 'admin_login_sso_token_encryption', true);
     }
 

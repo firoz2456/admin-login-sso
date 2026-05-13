@@ -4,7 +4,7 @@ Tags: google, login, sso, oauth, security, admin
 Requires at least: 6.4
 Tested up to: 6.4
 Requires PHP: 8.0
-Stable tag: 1.1.1
+Stable tag: 1.2.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -55,8 +55,20 @@ Yes, you can use wildcards for subdomains. For example, *.example.com would matc
 = What happens if a user doesn't have a WordPress account? =
 
 If a user doesn't have a WordPress account, there are two possibilities:
-1. If "Auto-create admin users" is enabled, a new administrator account will be created for them.
+1. If "Auto-create admin users" is enabled, a new administrator account will be created for them. Every Google account on your allowed domain becomes a WordPress administrator on first sign-in — only enable this for trusted internal domains.
 2. If not enabled, they will see an error message indicating they need to contact the administrator.
+
+= Can I store the Client Secret outside the database? =
+
+Yes. Define `ADMIN_LOGIN_SSO_CLIENT_SECRET` as an environment variable or as a PHP constant in `wp-config.php`. The plugin prefers env/constant over the `wp_options` value. When set externally, the settings page shows a "Managed externally" notice instead of the input form.
+
+= Am I locked out if SSO breaks? =
+
+Run via WP-CLI: `wp option update admin_login_sso_enabled 0`. That re-enables the standard WordPress login while you fix Google credentials. The plugin no longer ships an in-browser emergency bypass — WP-CLI is the recovery path.
+
+= I'm behind Cloudflare/a reverse proxy — does the rate limit work correctly? =
+
+Not yet. The OAuth callback rate limit (10 attempts / 15 minutes) keys on `REMOTE_ADDR`, which in front of a CDN is the CDN's egress IP. All your users share that IP and can collectively trip the limit. A proxy-aware fix is on the roadmap; until then, expect possible false-positive lockouts on busy sites behind a CDN.
 
 = Does this affect front-end login? =
 
@@ -74,6 +86,24 @@ If the classic login form is enabled in the settings, users can sign in using th
 
 == Changelog ==
 
+= 1.2.2 =
+* Security: Require email_verified=true on the Google userinfo response before granting access
+* Security: Refuse to store access tokens when OpenSSL is unavailable or AUTH_KEY is undefined; previously these conditions silently degraded to base64/known-key "encryption"
+* Security: Tighten allowed-domains sanitizer (RFC 952/1035 label rules; FILTER_FLAG_HOSTNAME on the fallback validator)
+* Fix: Pass the OAuth access_token through to user provisioning so encryption + logout-time revocation actually run (previously the field was always empty)
+* Fix: Honor ADMIN_LOGIN_SSO_CLIENT_SECRET env/constant across the settings page status banner, Test sign-in button, activation notice, and enable-SSO sanitizer
+* Change: Settings page now shows a "Managed externally" notice for the Client Secret when supplied via env/constant
+* Change: Remove root-level debug scripts (emergency-bypass.php, debug-domains.php, test-domain-validation.php); use WP-CLI to recover from lockouts
+* Security: Escape translator-supplied strings in admin notices and plugin row meta
+
+= 1.2.1 =
+* No functional changes — version metadata bump.
+
+= 1.2.0 =
+* Feature: WAF-safe Client Secret save flow. The secret is no longer transmitted through wp-admin/options.php (where Cloudflare/Sucuri WAFs match the GOCSPX- prefix as a leaked-secret signature). It is now saved via a dedicated AJAX endpoint using a JSON body and a base64-encoded, neutrally-named field.
+* UI: Settings page refactor — consolidated status banner, redirect-URI copy button, Quick setup guide card, contextual Help tab, parsed-domains chip preview.
+* UI: Settings page microcopy rewrite for clarity and safety, including a "Test Google sign-in" button and clear lockout-recovery instructions.
+
 = 1.1.1 =
 * Fix: Resolve intermittent "Invalid state parameter" errors caused by sanitize_key lowercasing state tokens
 * Fix: Increase OAuth state expiration from 5 to 15 minutes to prevent timeout on slow logins
@@ -90,6 +120,12 @@ If the classic login form is enabled in the settings, users can sign in using th
 * Initial release
 
 == Upgrade Notice ==
+
+= 1.2.2 =
+Security and correctness fixes: enforces email_verified on Google's response, makes token encryption fail closed, tightens the allowed-domains sanitizer, and respects env/constant Client Secret across the whole settings UI. Recommended for all users.
+
+= 1.2.0 =
+WAF-safe Client Secret save and a refreshed settings UI. No data migration required.
 
 = 1.1.1 =
 Fix intermittent "Invalid state parameter" errors on login.
